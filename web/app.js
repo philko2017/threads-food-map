@@ -928,169 +928,31 @@
     renderMeView();
   }
 
-  function renderAuthGate(containerId, desc) {
+  function renderWipGate(containerId, title, desc) {
     const gate = document.getElementById(containerId);
-    const hasLiff = (cfg.LIFF_ID || '').trim() && cfg.LIFF_ID !== '__LIFF_ID__';
     gate.innerHTML = `
-      <div class="auth-gate-icon">💬</div>
-      <h3>用 LINE 登入開始互推集點</h3>
+      <div class="auth-gate-icon">🚧</div>
+      <h3>${escHtml(title)}</h3>
       <p>${escHtml(desc)}</p>
-      <button class="btn-line" type="button" data-login-btn="1">${hasLiff ? 'LINE 帳號登入' : '體驗預覽登入（Demo）'}</button>
+      <button class="btn-outline" type="button" data-back-map="1">回地圖逛逛</button>
     `;
-    gate.querySelector('[data-login-btn]').addEventListener('click', loginWithLiffOrDemo);
-  }
-
-  function getDailyTaskStores() {
-    const confirmed = state.allStores.filter((s) => s['狀態'] === '已確認');
-    const others = state.allStores.filter((s) => s['狀態'] !== '已確認');
-    return [...confirmed, ...others].slice(0, 3);
+    gate.querySelector('[data-back-map]').addEventListener('click', () => switchTab('map'));
   }
 
   function renderTasksView() {
     const gate = document.getElementById('tasks-auth-gate');
     const content = document.getElementById('tasks-content');
-    if (!state.user.loggedIn) {
-      gate.classList.remove('hidden');
-      content.classList.add('hidden');
-      renderAuthGate('tasks-auth-gate', '看地圖不用登入；參加今日三家互推任務、查看本週人氣與熱心榜時，請先用 LINE 登入。');
-      return;
-    }
-    gate.classList.add('hidden');
-    content.classList.remove('hidden');
-
-    const dailyStores = getDailyTaskStores();
-    const completedCount = dailyStores.filter((s) => state.user.visitedToday.includes(s['編號'])).length;
-    const popularTop = [...state.allStores].sort((a, b) => getStorePopularity(b) - getStorePopularity(a)).slice(0, 5);
-
-    content.innerHTML = `
-      <section class="panel-card">
-        <h3>今日互推任務 <span>${completedCount} / ${dailyStores.length}</span></h3>
-        <p class="panel-sub">優先配對互補類別與新加入的小店。逛完 3 家額外獲得 +5 點！</p>
-        ${dailyStores.map((s) => {
-          const done = state.user.visitedToday.includes(s['編號']);
-          return `
-            <div class="task-item">
-              <div class="task-info">
-                <div class="task-title">${escHtml(s['店名'])}</div>
-                <div class="task-meta">${escHtml(s['類別'])} · ${escHtml(s['縣市'])}${escHtml(s['區'])}</div>
-              </div>
-              <button class="btn-primary btn-sm" data-task-visit="${escHtml(s['編號'])}" type="button">${done ? '已逛 ✓' : '去逛 +1'}</button>
-            </div>
-          `;
-        }).join('')}
-      </section>
-
-      <section class="panel-card">
-        <h3>本週人氣店家榜（Top 5）</h3>
-        <p class="panel-sub">前三名將登上 @its.all.good.73「本週脆友小店」貼文推薦。</p>
-        ${popularTop.map((s, idx) => `
-          <div class="rank-row">
-            <span><span class="rank-num ${idx < 3 ? 'top' : ''}">${idx + 1}</span>${escHtml(s['店名'])}（${escHtml(s['類別'])}）</span>
-            <strong>${getStorePopularity(s)} 次去逛</strong>
-          </div>
-        `).join('')}
-      </section>
-
-      <section class="panel-card">
-        <h3>本週互推夥伴</h3>
-        <p class="panel-sub">每週配對兩家互補類別的店，發文介紹對方並貼回連結，管理員確認後加分。</p>
-        <div class="collab-form">
-          <input id="collab-post-url" type="url" placeholder="貼上你的 Threads 互推貼文連結..." />
-          <button id="btn-submit-collab" class="btn-outline btn-sm" type="button">回報連結</button>
-        </div>
-      </section>
-    `;
-
-    content.querySelectorAll('[data-task-visit]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-task-visit');
-        const store = state.allStores.find((x) => x['編號'] === id);
-        if (!store) return;
-        const t = (store['Threads 帳號'] || '').replace(/^@+/, '');
-        const ig = (store['IG 帳號'] || '').replace(/^@+/, '');
-        const url = t ? `https://www.threads.net/@${encodeURIComponent(t)}` : (ig ? `https://www.instagram.com/${encodeURIComponent(ig)}` : '');
-        if (url) {
-          visitStoreExternal(store, url, t ? 'threads' : 'ig');
-          renderTasksView();
-        } else {
-          switchTab('map');
-          openStoreDrawer(store, getStoreCoords(store));
-        }
-      });
-    });
-
-    const collabBtn = document.getElementById('btn-submit-collab');
-    if (collabBtn) {
-      collabBtn.addEventListener('click', async () => {
-        const input = document.getElementById('collab-post-url');
-        const link = (input.value || '').trim();
-        if (!link.startsWith('http')) return showToast('請輸入有效的 Threads 貼文連結');
-        await postActionEvent('submit_collab', { postUrl: link });
-        input.value = '';
-        showToast('已送出互推貼文連結，等待確認加分！');
-      });
-    }
+    gate.classList.remove('hidden');
+    content.classList.add('hidden');
+    renderWipGate('tasks-auth-gate', '任務功能研發中', '每日互推任務與本週脆友小店排行目前正在研發中，現階段無須登入即可免費瀏覽地圖、搜尋附近與登錄店家！');
   }
 
   function renderMeView() {
     const gate = document.getElementById('me-auth-gate');
     const content = document.getElementById('me-content');
-    if (!state.user.loggedIn) {
-      gate.classList.remove('hidden');
-      content.classList.add('hidden');
-      renderAuthGate('me-auth-gate', '登入後可查看累積點數、等級徽章，並綁定管理你在地圖上的店家。');
-      return;
-    }
-    gate.classList.add('hidden');
-    content.classList.remove('hidden');
-
-    const myStores = state.allStores.filter((s) => s['店家 LINE 帳號'] === state.user.userId || (state.user.isDemo && s['編號'] === 'FM-DEMO01'));
-    const avatarHtml = state.user.pictureUrl
-      ? `<img src="${escHtml(state.user.pictureUrl)}" alt="" />`
-      : escHtml((state.user.displayName || '友').slice(0, 1));
-
-    content.innerHTML = `
-      <section class="panel-card">
-        <div class="profile-header">
-          <div class="profile-avatar">${avatarHtml}</div>
-          <div>
-            <div class="task-title">${escHtml(state.user.displayName || '脆友玩家')}</div>
-            <div class="badges" style="margin-top:4px;">
-              <span class="badge badge-level">${escHtml(state.user.level)}</span>
-              <span class="badge">${escHtml(state.user.role)}</span>
-            </div>
-          </div>
-        </div>
-        <div class="stats-grid">
-          <div class="stat-box"><div class="stat-val">${state.user.points}</div><div class="stat-lbl">累積點數</div></div>
-          <div class="stat-box"><div class="stat-val">${state.user.visitedToday.length}/20</div><div class="stat-lbl">今日去逛</div></div>
-          <div class="stat-box"><div class="stat-val">${state.user.sharesToday}/5</div><div class="stat-lbl">今日分享</div></div>
-        </div>
-      </section>
-
-      <section class="panel-card">
-        <h3>我的店家</h3>
-        ${myStores.length === 0
-          ? '<p class="panel-sub">尚未綁定店家。點擊右下角「＋ 登錄我的店」即可免費上架並綁定你的 LINE 帳號！</p>'
-          : myStores.map((s) => `
-              <div class="task-item">
-                <div class="task-info">
-                  <div class="task-title">${escHtml(s['店名'])} ${statusBadgeHtml(s['狀態'])}</div>
-                  <div class="task-meta">代號 ${escHtml(s['編號'])} · 被逛 ${getStorePopularity(s)} 次</div>
-                </div>
-                <button class="btn-outline btn-sm" data-share-mine="${escHtml(s['編號'])}" type="button">分享宣傳卡</button>
-              </div>
-            `).join('')
-        }
-      </section>
-    `;
-
-    content.querySelectorAll('[data-share-mine]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const store = state.allStores.find((x) => x['編號'] === btn.getAttribute('data-share-mine'));
-        if (store) openShareModal(store);
-      });
-    });
+    gate.classList.remove('hidden');
+    content.classList.add('hidden');
+    renderWipGate('me-auth-gate', '個人頁面研發中', '「我的」個人頁面與店家認領管理功能目前正在研發中，現階段無須任何帳號登入，歡迎直接免費登錄與分享店家！');
   }
 
   async function initLiff() {
@@ -1125,7 +987,6 @@
     initForm();
     bindEvents();
     loadStores();
-    initLiff();
   }
 
   document.addEventListener('DOMContentLoaded', init);
