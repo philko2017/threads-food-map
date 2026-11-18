@@ -298,10 +298,13 @@
   async function loadStores() {
     const csvUrl = (cfg.SHEET_CSV_URL || '').trim();
     const isDemo = !csvUrl || csvUrl === '__SHEET_CSV_URL__';
-    document.getElementById('demo-banner').classList.toggle('hidden', !isDemo);
+    const banner = document.getElementById('demo-banner');
+    banner.classList.toggle('hidden', !isDemo);
+    const seedList = Array.isArray(window.SEED_STORES) && window.SEED_STORES.length > 0 ? window.SEED_STORES : DEMO_STORES;
 
     if (isDemo) {
-      state.allStores = DEMO_STORES.filter((s) => VISIBLE_STATUSES.has(s['狀態']));
+      banner.innerHTML = `目前顯示首批 ${seedList.length} 家脆友種子店家（設定 <code>config.js</code> 後將改讀即時試算表）。`;
+      state.allStores = seedList.filter((s) => VISIBLE_STATUSES.has(s['狀態']));
       applyFilters();
       checkDeepLink();
       return;
@@ -315,9 +318,9 @@
       state.allStores = parsed.filter((s) => s['店名'] && VISIBLE_STATUSES.has(s['狀態']));
     } catch (err) {
       console.error('載入試算表失敗:', err);
-      showToast('無法讀取試算表資料，暫時顯示示範資料');
-      document.getElementById('demo-banner').classList.remove('hidden');
-      state.allStores = DEMO_STORES;
+      showToast('無法讀取試算表資料，暫時顯示種子店家資料');
+      banner.classList.remove('hidden');
+      state.allStores = seedList;
     }
     applyFilters();
     checkDeepLink();
@@ -368,7 +371,10 @@
       marker.on('click', () => openStoreDrawer(store, coords));
       state.clusterGroup.addLayer(marker);
       state.markersById.set(store['編號'], { marker, coords, store });
-      bounds.push([coords.lat, coords.lng]);
+      // 優先以台灣範圍內的店家做 fitBounds，避免海外店家將地圖縮得太遠
+      if (coords.lat >= 21 && coords.lat <= 26.5 && coords.lng >= 118 && coords.lng <= 123) {
+        bounds.push([coords.lat, coords.lng]);
+      }
     });
 
     if (bounds.length > 0 && !state.activeStore) {
