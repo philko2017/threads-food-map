@@ -819,6 +819,8 @@
     });
 
     document.getElementById('btn-rules-top').addEventListener('click', () => openModal('rules-modal'));
+    const btnCopyright = document.getElementById('btn-copyright-top');
+    if (btnCopyright) btnCopyright.addEventListener('click', () => openModal('copyright-modal'));
 
     document.getElementById('btn-download-card').addEventListener('click', () => {
       const canvas = document.getElementById('share-card-canvas');
