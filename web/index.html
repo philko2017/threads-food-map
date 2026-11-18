@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>脆友美食地圖｜Threads 在地獨立小店指南</title>
+  <meta name="description" content="專門收錄在 Threads 經營的獨立美食小店。店家填表一分鐘即上架，一起逛店、互推、找好吃的。" />
+  <meta property="og:title" content="脆友美食地圖｜Threads 在地獨立小店指南" />
+  <meta property="og:description" content="餐廳、小吃、咖啡、甜點、飲料、烘焙、伴手禮、酒吧居酒屋，在脆上發現好店。" />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍜</text></svg>" />
+
+  <!-- Leaflet & MarkerCluster (免費開源，免金鑰) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <!-- 頂部列 -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <div>
+          <h1>脆友美食地圖</h1>
+          <p id="store-count-label" class="brand-sub">載入中...</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="btn-rules-top" class="btn-ghost" type="button">收錄規則</button>
+        <button id="btn-locate" class="btn-ghost" type="button" title="定位到附近">附近</button>
+      </div>
+    </header>
+
+    <!-- 篩選列（地圖與清單共用） -->
+    <section class="filter-bar" aria-label="篩選店家">
+      <div class="category-chips" id="category-chips">
+        <button class="chip active" data-category="全部" type="button">全部</button>
+        <button class="chip" data-category="餐廳" type="button">餐廳</button>
+        <button class="chip" data-category="小吃" type="button">小吃</button>
+        <button class="chip" data-category="咖啡" type="button">咖啡</button>
+        <button class="chip" data-category="甜點" type="button">甜點</button>
+        <button class="chip" data-category="飲料" type="button">飲料</button>
+        <button class="chip" data-category="烘焙" type="button">烘焙</button>
+        <button class="chip" data-category="伴手禮" type="button">伴手禮</button>
+        <button class="chip" data-category="酒吧居酒屋" type="button">酒吧居酒屋</button>
+      </div>
+      <div class="filter-row-2">
+        <select id="city-filter" aria-label="篩選縣市">
+          <option value="全部">全部縣市</option>
+        </select>
+        <input id="search-input" type="search" placeholder="搜尋店名、介紹或地區..." aria-label="搜尋店家" />
+      </div>
+    </section>
+
+    <!-- 預覽模式提示條（尚未設定試算表 CSV 時顯示） -->
+    <div id="demo-banner" class="demo-banner hidden">
+      目前顯示示範資料（尚未設定 <code>config.js</code> 的試算表 CSV 網址）。
+    </div>
+
+    <!-- 主內容區 -->
+    <main class="main-area">
+      <!-- 分頁 1：地圖 -->
+      <section id="view-map" class="tab-view active" aria-label="地圖檢視">
+        <div id="map" class="map-canvas"></div>
+      </section>
+
+      <!-- 分頁 2：清單 -->
+      <section id="view-list" class="tab-view" aria-label="清單檢視">
+        <div class="list-toolbar">
+          <span id="list-summary">共 0 家</span>
+          <select id="sort-select" aria-label="排序方式">
+            <option value="newest">最新加入</option>
+            <option value="popular">人氣最高</option>
+            <option value="city">依縣市地區</option>
+            <option value="category">依類別</option>
+          </select>
+        </div>
+        <div id="store-list" class="store-list"></div>
+      </section>
+
+      <!-- 分頁 3：任務（階段 6～7，需 LINE 登入） -->
+      <section id="view-tasks" class="tab-view" aria-label="互推任務與排行">
+        <div id="tasks-auth-gate" class="auth-gate"></div>
+        <div id="tasks-content" class="panel-stack hidden"></div>
+      </section>
+
+      <!-- 分頁 4：我的（階段 5～7，需 LINE 登入） -->
+      <section id="view-me" class="tab-view" aria-label="我的點數與店家">
+        <div id="me-auth-gate" class="auth-gate"></div>
+        <div id="me-content" class="panel-stack hidden"></div>
+      </section>
+    </main>
+
+    <!-- 底部滑出店家卡片 -->
+    <aside id="store-drawer" class="store-drawer hidden" aria-live="polite">
+      <div class="drawer-handle"></div>
+      <button id="drawer-close" class="drawer-close" type="button" aria-label="關閉店家卡片">✕</button>
+      <div id="drawer-content"></div>
+    </aside>
+
+    <!-- 固定右下角：登錄我的店 -->
+    <button id="btn-open-form" class="fab-submit" type="button">＋ 登錄我的店</button>
+
+    <!-- 底部導覽列（計畫書 4 分頁：地圖、清單、任務、我的） -->
+    <nav class="bottom-nav bottom-nav-4" aria-label="主導覽">
+      <button class="nav-btn active" data-tab="map" type="button">
+        <span class="nav-icon">🗺️</span>
+        <span>地圖</span>
+      </button>
+      <button class="nav-btn" data-tab="list" type="button">
+        <span class="nav-icon">📋</span>
+        <span>清單</span>
+      </button>
+      <button class="nav-btn" data-tab="tasks" type="button">
+        <span class="nav-icon">🎯</span>
+        <span>任務</span>
+      </button>
+      <button class="nav-btn" data-tab="me" type="button">
+        <span class="nav-icon">👤</span>
+        <span>我的</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- 登錄店家表單 Modal -->
+  <div id="form-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="form-modal-title">
+    <div class="modal-backdrop" data-close-modal="form-modal"></div>
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="form-modal-title">登錄我的店（1 分鐘上架）</h2>
+        <button class="modal-close" type="button" data-close-modal="form-modal" aria-label="關閉">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="submit-form" novalidate>
+          <div class="form-group">
+            <label for="f-name">店名 <span class="req">*</span></label>
+            <input id="f-name" name="店名" type="text" maxlength="60" required placeholder="例如：巷口那家咖啡" />
+          </div>
+
+          <div class="form-group">
+            <label for="f-category">類別 <span class="req">*</span></label>
+            <select id="f-category" name="類別" required>
+              <option value="">請選擇類別</option>
+              <option value="餐廳">餐廳</option>
+              <option value="小吃">小吃</option>
+              <option value="咖啡">咖啡</option>
+              <option value="甜點">甜點</option>
+              <option value="飲料">飲料</option>
+              <option value="烘焙">烘焙</option>
+              <option value="伴手禮">伴手禮</option>
+              <option value="酒吧居酒屋">酒吧居酒屋</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>有沒有實體店面 <span class="req">*</span></label>
+            <div class="radio-row">
+              <label class="radio-card">
+                <input type="radio" name="有沒有實體店面" value="true" checked />
+                <span>有實體店面</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="有沒有實體店面" value="false" />
+                <span>純宅配／網購</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="f-city">縣市 <span class="req">*</span></label>
+              <select id="f-city" name="縣市" required>
+                <option value="">選擇縣市</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="f-district">區／鄉鎮市 <span class="req">*</span></label>
+              <input id="f-district" name="區" type="text" maxlength="20" required placeholder="例如：大安區" />
+            </div>
+          </div>
+
+          <div class="form-group" id="address-group">
+            <label for="f-address">地址 <span id="address-req" class="req">*</span></label>
+            <input id="f-address" name="地址" type="text" maxlength="120" placeholder="路街巷弄號樓（有店面必填）" />
+            <small class="hint">只做宅配可留空，地圖將標示於縣市／區域中心。</small>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="f-threads">Threads 帳號 <span class="hint-inline">(與 IG 擇一)</span></label>
+              <input id="f-threads" name="Threads 帳號" type="text" maxlength="60" placeholder="不含 @ 也可" />
+            </div>
+            <div class="form-group">
+              <label for="f-ig">IG 帳號 <span class="hint-inline">(與 Threads 擇一)</span></label>
+              <input id="f-ig" name="IG 帳號" type="text" maxlength="60" placeholder="不含 @ 也可" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="f-intro">一句話介紹 <span id="intro-count" class="hint-inline">0 / 30</span></label>
+            <input id="f-intro" name="一句話介紹" type="text" maxlength="30" placeholder="30 字以內，講最推薦的特色" />
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="f-phone">電話（選填）</label>
+              <input id="f-phone" name="電話" type="tel" maxlength="30" placeholder="02-xxxx-xxxx" />
+            </div>
+            <div class="form-group">
+              <label for="f-hours">營業時間（選填）</label>
+              <input id="f-hours" name="營業時間" type="text" maxlength="100" placeholder="例如：11:00-20:00 週一休" />
+            </div>
+          </div>
+
+          <div class="form-group consent-box">
+            <label class="checkbox-label">
+              <input id="f-consent" name="同意聲明" type="checkbox" required />
+              <span>我是店家本人或已獲店家同意，同意將以上資料公開於脆友美食地圖。 <span class="req">*</span></span>
+            </label>
+          </div>
+
+          <div id="form-error" class="form-error hidden" role="alert"></div>
+
+          <button id="btn-submit-form" class="btn-primary btn-block" type="submit">送出並立即上架</button>
+        </form>
+
+        <!-- 送出成功畫面 -->
+        <div id="form-success" class="form-success hidden">
+          <div class="success-icon">🎉</div>
+          <h3>已上架，確認中！</h3>
+          <p>系統已收錄你的店家（編號：<strong id="success-id"></strong>），審核會在三天內完成，期間已可直接在地圖上看到。</p>
+          <div class="success-actions">
+            <button id="btn-view-on-map" class="btn-primary" type="button">在地圖上看我的店</button>
+            <button id="btn-share-threads-new" class="btn-outline" type="button">分享到 Threads</button>
+          </div>
+        </div>
+
+        <!-- 表單下方公開收錄規則 -->
+        <details class="rules-inline" open>
+          <summary>公開收錄規則（送出前請先確認）</summary>
+          <div id="rules-inline-body"></div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- 公開收錄規則與回報 Modal -->
+  <div id="rules-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title">
+    <div class="modal-backdrop" data-close-modal="rules-modal"></div>
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="rules-modal-title">公開收錄規則與回報</h2>
+        <button class="modal-close" type="button" data-close-modal="rules-modal" aria-label="關閉">✕</button>
+      </div>
+      <div class="modal-body" id="rules-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- 分享與宣傳卡 Modal（階段 4 冷啟動） -->
+  <div id="share-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+    <div class="modal-backdrop" data-close-modal="share-modal"></div>
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="share-modal-title">分享店家與宣傳卡</h2>
+        <button class="modal-close" type="button" data-close-modal="share-modal" aria-label="關閉">✕</button>
+      </div>
+      <div class="modal-body" id="share-modal-body">
+        <div class="share-card-preview-wrap">
+          <canvas id="share-card-canvas" width="720" height="420"></canvas>
+        </div>
+        <div class="share-btn-grid">
+          <button id="btn-share-line" class="btn-line" type="button">LINE 分享（+3 點）</button>
+          <button id="btn-share-threads" class="btn-primary" type="button">發到 Threads</button>
+          <button id="btn-download-card" class="btn-outline" type="button">下載宣傳圖卡</button>
+          <button id="btn-copy-link" class="btn-outline" type="button">複製專屬網址</button>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label for="share-threads-text">預寫 Threads 分享文（可自由修改）</label>
+          <textarea id="share-threads-text" rows="4" class="share-textarea"></textarea>
+          <button id="btn-copy-threads-text" class="link-muted" type="button" style="margin-top:6px;">複製分享文案</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

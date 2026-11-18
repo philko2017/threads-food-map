@@ -1,0 +1,133 @@
+{
+  "name": "脆友美食地圖｜事件與點數 API（階段 5～7）",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Taipei"
+  },
+  "nodes": [
+    {
+      "id": "act-001",
+      "name": "互動事件 Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "food-map-action-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "food-map-action",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      }
+    },
+    {
+      "id": "act-002",
+      "name": "讀取事件紀錄",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [220, 0],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "read",
+        "documentId": { "__rl": true, "mode": "id", "value": "__SHEET_ID__" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "事件紀錄" },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "__GOOGLE_CRED_ID__", "name": "Google philko.2017" }
+      }
+    },
+    {
+      "id": "act-003",
+      "name": "規則與防刷分計算",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const webhookData = $('互動事件 Webhook').first().json;\nconst body = webhookData.body || webhookData || {};\nconst action = String(body.action || '').trim();\nconst userId = String(body.userId || '').trim();\nconst displayName = String(body.displayName || '').trim();\nconst storeId = String(body.storeId || '').trim();\nconst channel = String(body.channel || '').trim();\nconst postUrl = String(body.postUrl || '').trim();\n\nif (!userId) {\n  return [{ json: { writeEvent: false, notifyAdmin: false, res: JSON.stringify({ ok: false, message: '缺少 userId' }) } }];\n}\n\nconst now = new Date();\nconst twNow = new Date(now.getTime() + 8 * 3600 * 1000);\nconst today = twNow.toISOString().slice(0, 10);\nconst twIso = twNow.toISOString().replace('Z', '+08:00');\n\nconst rows = $input.all().map((i) => i.json).filter((r) => r['玩家LINE'] || r.userId);\nconst userTodayEvents = rows.filter((r) => String(r['玩家LINE'] || '') === userId && String(r['日期'] || '') === today);\n\nfunction calcPoints(uid) {\n  return rows\n    .filter((r) => String(r['玩家LINE'] || '') === uid)\n    .reduce((sum, r) => sum + (parseInt(r['點數'] || '0', 10) || 0), 0);\n}\n\nfunction levelByPoints(pts) {\n  if (pts >= 100) return '🏆 互推達人';\n  if (pts >= 20) return '🔥 熱心店家';\n  return '🌱 新芽';\n}\n\nif (action === 'get_profile') {\n  const pts = calcPoints(userId);\n  return [{\n    json: {\n      writeEvent: false,\n      notifyAdmin: false,\n      res: JSON.stringify({ ok: true, points: pts, level: levelByPoints(pts), role: '玩家' })\n    }\n  }];\n}\n\nif (action === 'visit') {\n  if (!storeId) {\n    return [{ json: { writeEvent: false, notifyAdmin: false, res: JSON.stringify({ ok: false, message: '缺少 storeId' }) } }];\n  }\n  const visitsToday = userTodayEvents.filter((r) => r['動作'] === 'visit');\n  if (visitsToday.some((r) => String(r['店家編號'] || '') === storeId)) {\n    return [{ json: { writeEvent: false, notifyAdmin: false, res: JSON.stringify({ ok: false, reason: 'already_visited_today' }) } }];\n  }\n  if (visitsToday.length >= 20) {\n    return [{ json: { writeEvent: false, notifyAdmin: false, res: JSON.stringify({ ok: false, reason: 'daily_limit_reached' }) } }];\n  }\n  return [{\n    json: {\n      writeEvent: true,\n      notifyAdmin: false,\n      eventRow: {\n        '時間': twIso,\n        '日期': today,\n        '玩家LINE': userId,\n        '暱稱': displayName,\n        '動作': 'visit',\n        '店家編號': storeId,\n        '管道': channel,\n        '點數': 1,\n        '備註': '去逛一次'\n      },\n      res: JSON.stringify({ ok: true, delta: 1 })\n    }\n  }];\n}\n\nif (action === 'share') {\n  const sharesToday = userTodayEvents.filter((r) => r['動作'] === 'share');\n  if (sharesToday.length >= 5) {\n    return [{ json: { writeEvent: false, notifyAdmin: false, res: JSON.stringify({ ok: false, reason: 'share_limit_reached' }) } }];\n  }\n  return [{\n    json: {\n      writeEvent: true,\n      notifyAdmin: false,\n      eventRow: {\n        '時間': twIso,\n        '日期': today,\n        '玩家LINE': userId,\n        '暱稱': displayName,\n        '動作': 'share',\n        '店家編號': storeId,\n        '管道': 'line',\n        '點數': 3,\n        '備註': 'LINE 分享'\n      },\n      res: JSON.stringify({ ok: true, delta: 3 })\n    }\n  }];\n}\n\nif (action === 'submit_collab') {\n  return [{\n    json: {\n      writeEvent: true,\n      notifyAdmin: true,\n      notifyText: `🤝 互推貼文回報\\n玩家：${displayName || userId}\\n連結：${postUrl}`,\n      eventRow: {\n        '時間': twIso,\n        '日期': today,\n        '玩家LINE': userId,\n        '暱稱': displayName,\n        '動作': 'collab_post',\n        '店家編號': storeId,\n        '管道': 'threads',\n        '點數': 0,\n        '備註': postUrl\n      },\n      res: JSON.stringify({ ok: true, message: '已送出，等待管理員確認加分' })\n    }\n  }];\n}\n\nreturn [{ json: { writeEvent: false, notifyAdmin: false, res: JSON.stringify({ ok: false, message: '未知 action' }) } }];\n"
+      }
+    },
+    {
+      "id": "act-004",
+      "name": "是否寫入事件",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [660, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.writeEvent }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "act-005",
+      "name": "寫入事件紀錄",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [880, -100],
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "mode": "id", "value": "__SHEET_ID__" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "事件紀錄" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "時間": "={{ $json.eventRow['時間'] }}",
+            "日期": "={{ $json.eventRow['日期'] }}",
+            "玩家LINE": "={{ $json.eventRow['玩家LINE'] }}",
+            "暱稱": "={{ $json.eventRow['暱稱'] }}",
+            "動作": "={{ $json.eventRow['動作'] }}",
+            "店家編號": "={{ $json.eventRow['店家編號'] }}",
+            "管道": "={{ $json.eventRow['管道'] }}",
+            "點數": "={{ $json.eventRow['點數'] }}",
+            "備註": "={{ $json.eventRow['備註'] }}"
+          }
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "__GOOGLE_CRED_ID__", "name": "Google philko.2017" }
+      }
+    },
+    {
+      "id": "act-006",
+      "name": "回應結果",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1100, 0],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('規則與防刷分計算').first().json.res }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [{ "name": "Content-Type", "value": "application/json; charset=utf-8" }]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "互動事件 Webhook": { "main": [[{ "node": "讀取事件紀錄", "type": "main", "index": 0 }]] },
+    "讀取事件紀錄": { "main": [[{ "node": "規則與防刷分計算", "type": "main", "index": 0 }]] },
+    "規則與防刷分計算": { "main": [[{ "node": "是否寫入事件", "type": "main", "index": 0 }]] },
+    "是否寫入事件": {
+      "main": [
+        [{ "node": "寫入事件紀錄", "type": "main", "index": 0 }],
+        [{ "node": "回應結果", "type": "main", "index": 0 }]
+      ]
+    },
+    "寫入事件紀錄": { "main": [[{ "node": "回應結果", "type": "main", "index": 0 }]] }
+  }
+}

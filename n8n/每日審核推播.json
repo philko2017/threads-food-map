@@ -1,0 +1,151 @@
+{
+  "name": "脆友美食地圖｜每日早上審核推播",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Taipei"
+  },
+  "nodes": [
+    {
+      "id": "fm-rev-001",
+      "name": "每天早上 9 點",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fm-rev-002",
+      "name": "讀取店家試算表",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [220, 0],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "__SHEET_ID__",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "店家",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "__GOOGLE_SHEETS_CRED_ID__",
+          "name": "Google philko.2017"
+        }
+      }
+    },
+    {
+      "id": "fm-rev-003",
+      "name": "整理確認中清單",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const rows = $input.all().map((i) => i.json || {});\nconst pending = rows.filter((r) => String(r['狀態'] || '').trim() === '確認中' && r['店名']);\n\nif (pending.length === 0) {\n  return [{ json: { hasPending: false, lineText: '' } }];\n}\n\nconst now = Date.now();\nconst lines = pending.map((r, idx) => {\n  const sentAt = Date.parse(r['送出時間'] || '');\n  const days = Number.isNaN(sentAt) ? 0 : Math.floor((now - sentAt) / 86400000);\n  const overdue = days >= 3 ? ` ⚠️已過${days}天` : (days > 0 ? `（${days}天前）` : '（今天）');\n  const links = [];\n  if (r['Threads 帳號']) links.push('Threads: https://www.threads.net/@' + String(r['Threads 帳號']).replace(/^@+/, ''));\n  if (r['IG 帳號']) links.push('IG: https://www.instagram.com/' + String(r['IG 帳號']).replace(/^@+/, ''));\n  const addr = r['有沒有實體店面'] === '否' ? '純宅配' : (r['地址'] || '未填地址');\n  return `${idx + 1}. [${r['編號']}] ${r['店名']}（${r['類別']}｜${r['縣市']}${r['區']}）${overdue}\\n   地址：${addr}\\n   介紹：${r['一句話介紹'] || '無'}\\n   ${links.join(' / ')}`;\n});\n\nconst header = `【脆友美食地圖】今日待審「確認中」共 ${pending.length} 家（可整段貼給 AI 逐筆初審）：\\n`;\nconst text = (header + lines.join('\\n\\n')).slice(0, 4800);\n\nreturn [{ json: { hasPending: true, count: pending.length, lineText: text } }];\n"
+      }
+    },
+    {
+      "id": "fm-rev-004",
+      "name": "是否有待審店家",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [660, 0],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $json.hasPending ? 1 : 0 }}"
+      }
+    },
+    {
+      "id": "fm-rev-005",
+      "name": "推播審核清單到 LINE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 80],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ to: '__NOTIFY_TO__', messages: [{ type: 'text', text: $json.lineText }] }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__LINE_CRED_ID__",
+          "name": "脆友美食地圖 LINE"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "每天早上 9 點": {
+      "main": [
+        [
+          {
+            "node": "讀取店家試算表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "讀取店家試算表": {
+      "main": [
+        [
+          {
+            "node": "整理確認中清單",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整理確認中清單": {
+      "main": [
+        [
+          {
+            "node": "是否有待審店家",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否有待審店家": {
+      "main": [
+        [],
+        [
+          {
+            "node": "推播審核清單到 LINE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
