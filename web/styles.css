@@ -995,23 +995,28 @@ html, body {
 .warm-marker-wrap {
   background: transparent;
   border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
 }
 
 .warm-marker-pin {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50% 50% 50% 0;
   background: #ea580c;
   border: 2.5px solid #ffffff;
   transform: rotate(-45deg);
   box-shadow: 0 3px 8px rgba(154, 52, 18, 0.45);
   position: relative;
+  flex-shrink: 0;
 }
 
 .warm-marker-pin::after {
   content: '';
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: #fff7ed;
   position: absolute;
@@ -1022,6 +1027,24 @@ html, body {
 
 .warm-marker-pin.pending {
   background: #f59e0b;
+}
+
+.warm-marker-label {
+  margin-top: 6px;
+  padding: 1px 6px;
+  max-width: 116px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #1c1917;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(28, 25, 23, 0.18);
+  text-align: center;
 }
 
 .marker-cluster-small {

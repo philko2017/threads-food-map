@@ -430,11 +430,12 @@
 
   function createWarmMarkerIcon(store) {
     const isPending = store['狀態'] === '確認中';
+    const label = escHtml(store['店名'] || '');
     return L.divIcon({
       className: 'warm-marker-wrap',
-      html: `<div class="warm-marker-pin${isPending ? ' pending' : ''}"></div>`,
-      iconSize: [28, 34],
-      iconAnchor: [14, 32],
+      html: `<div class="warm-marker-pin${isPending ? ' pending' : ''}"></div><div class="warm-marker-label">${label}</div>`,
+      iconSize: [120, 56],
+      iconAnchor: [60, 32],
     });
   }
 
