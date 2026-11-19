@@ -1,23 +1,30 @@
 <!DOCTYPE html>
 <html lang="zh-Hant-TW">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://static.line-scdn.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://unpkg.com https://profile.line-scdn.net; font-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self';" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' https://unpkg.com https://static.line-scdn.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://unpkg.com https://profile.line-scdn.net; font-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self';" />
   <title>脆友美食地圖｜Threads 在地獨立小店指南</title>
   <meta name="description" content="專門收錄在 Threads 經營的獨立美食小店。店家填表一分鐘即上架，一起逛店、互推、找好吃的。" />
   <meta property="og:title" content="脆友美食地圖｜Threads 在地獨立小店指南" />
   <meta property="og:description" content="餐廳、小吃、咖啡、甜點、飲料、烘焙、伴手禮、酒吧居酒屋，在脆上發現好店。" />
   <meta property="og:type" content="website" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍜</text></svg>" />
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍜</text></svg>" />
 
   <!-- Leaflet & MarkerCluster (免費開源，免金鑰) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="anonymous" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+    integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="anonymous" />
   <link rel="stylesheet" href="./styles.css?v=20261120-2" />
 </head>
+
 <body>
   <div id="app" class="app-shell">
     <!-- 頂部列 -->
@@ -27,8 +34,13 @@
         <div>
           <div class="brand-title-row">
             <h1>脆友美食地圖</h1>
-            <a class="github-badge" href="https://github.com/philko2017/threads-food-map" target="_blank" rel="noopener noreferrer" title="在 GitHub 上取得原始碼與改版">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+            <a class="github-badge" href="https://github.com/philko2017/threads-food-map" target="_blank"
+              rel="noopener noreferrer" title="在 GitHub 上取得原始碼與改版">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z">
+                </path>
+              </svg>
               <span>GitHub</span>
             </a>
           </div>
@@ -144,7 +156,8 @@
 
           <div class="form-group">
             <label for="f-category">特色分類 <span class="req">*</span></label>
-            <input id="f-category" name="類別" type="text" maxlength="20" required list="category-suggestions" placeholder="例如：臭豆腐、麵線、手沖咖啡" />
+            <input id="f-category" name="類別" type="text" maxlength="20" required list="category-suggestions"
+              placeholder="例如：臭豆腐、麵線、手沖咖啡" />
             <datalist id="category-suggestions">
               <option value="臭豆腐"></option>
               <option value="麵線"></option>
@@ -262,7 +275,8 @@
   </div>
 
   <!-- 版權宣告與開源說明 Modal -->
-  <div id="copyright-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="copyright-modal-title">
+  <div id="copyright-modal" class="modal hidden" role="dialog" aria-modal="true"
+    aria-labelledby="copyright-modal-title">
     <div class="modal-backdrop" data-close-modal="copyright-modal"></div>
     <div class="modal-sheet">
       <div class="modal-header">
@@ -277,8 +291,12 @@
           </p>
           <ul>
             <li><strong>完全免費、自由登錄</strong>：歡迎所有獨立美食小店自行登錄，不收取任何上架費或抽成。</li>
-            <li><strong>開源共創、歡迎改版</strong>：本專案原始碼公開於 <a href="https://github.com/philko2017/threads-food-map" target="_blank" rel="noopener noreferrer">GitHub（philko2017/threads-food-map）</a>，歡迎其他開發者 Fork 改版、串接或延伸更多在地地圖應用。</li>
-            <li><strong>資料修正與下架</strong>：若您是店家本人，發現資料有誤、歇業或希望自地圖下架，請點選店家卡片中的「回報資訊有誤」，或直接於 Threads 私訊 <a href="https://www.threads.net/@its.all.good.73" target="_blank" rel="noopener noreferrer">@its.all.good.73</a>，我們將立即協助處理。</li>
+            <li><strong>開源共創、歡迎改版</strong>：本專案原始碼公開於 <a href="https://github.com/philko2017/threads-food-map"
+                target="_blank" rel="noopener noreferrer">GitHub（philko2017/threads-food-map）</a>，歡迎其他開發者 Fork
+              改版、串接或延伸更多在地地圖應用。</li>
+            <li><strong>資料修正與下架</strong>：若您是店家本人，發現資料有誤、歇業或希望自地圖下架，請點選店家卡片中的「回報資訊有誤」，或直接於 Threads 私訊 <a
+                href="https://www.threads.net/@its.all.good.73" target="_blank"
+                rel="noopener noreferrer">@its.all.good.73</a>，我們將立即協助處理。</li>
           </ul>
         </div>
       </div>
@@ -315,11 +333,16 @@
   <!-- Toast 提示 -->
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"
+    crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"
+    integrity="sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr"
+    crossorigin="anonymous"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" crossorigin="anonymous" defer></script>
   <script src="./seed_stores.js?v=20261120-1"></script>
   <script src="./config.js?v=20261120-1"></script>
-  <script src="./app.js?v=20261120-4"></script>
+  <script src="./app.js?v=20261120-5"></script>
 </body>
+
 </html>

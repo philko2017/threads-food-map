@@ -3,6 +3,37 @@
 
   const cfg = window.FOOD_MAP_CONFIG || {};
   const VISIBLE_STATUSES = new Set(['確認中', '已確認', '待修改']);
+  const GENERIC_CATEGORIES = new Set(['小吃', '餐廳', '甜點', '伴手禮', '酒吧居酒屋', '']);
+
+  function normalizeCategory(store) {
+    const raw = String(store['類別'] || '').trim();
+    if (raw === '麵線' || raw === '素麵線' || raw === '麵線糊' || raw.includes('麵線')) {
+      return '麵線';
+    }
+    if (!GENERIC_CATEGORIES.has(raw)) {
+      return raw;
+    }
+    const text = `${store['店名'] || ''} ${store['一句話介紹'] || ''}`;
+    const rules = [
+      [/臭豆腐/, '臭豆腐'],
+      [/麵線/, '麵線'],
+      [/蔥油餅/, '蔥油餅'],
+      [/白糖粿/, '白糖粿'],
+      [/早午餐/, '早午餐'],
+      [/河粉|越式/, '越式料理'],
+      [/串炸|串揚/, '串炸居酒屋'],
+      [/墨西哥|捲餅|塔可/, '墨西哥料理'],
+      [/創意料理/, '創意料理'],
+      [/芒果乾|梅肉/, '果乾零嘴'],
+      [/手路菜|辦桌/, '手路菜'],
+      [/茶葉|製茶/, '茶葉'],
+      [/咖啡|珈琲/, '咖啡'],
+    ];
+    for (const [re, tag] of rules) {
+      if (re.test(text)) return tag;
+    }
+    return raw || '小吃';
+  }
 
   // 台灣各縣市代表座標（供純宅配或尚無經緯度的店家在地圖上顯示大概位置）
   const CITY_CENTERS = {
@@ -339,7 +370,9 @@
 
     if (isDemo) {
       banner.innerHTML = `目前顯示首批 ${seedList.length} 家脆友種子店家（設定 <code>config.js</code> 後將改讀即時試算表）。`;
-      state.allStores = seedList.filter((s) => VISIBLE_STATUSES.has(s['狀態']));
+      state.allStores = seedList
+        .filter((s) => VISIBLE_STATUSES.has(s['狀態']))
+        .map((s) => ({ ...s, '類別': normalizeCategory(s) }));
       renderCategoryChips();
       applyFilters();
       checkDeepLink();
@@ -349,7 +382,7 @@
     if (!isAllowedEndpointUrl(csvUrl, { allowRelative: true })) {
       console.warn('SHEET_CSV_URL 格式不安全，已改用種子店家資料');
       banner.classList.remove('hidden');
-      state.allStores = seedList;
+      state.allStores = seedList.map((s) => ({ ...s, '類別': normalizeCategory(s) }));
       renderCategoryChips();
       applyFilters();
       checkDeepLink();
@@ -361,12 +394,14 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
       const parsed = parseCSV(text);
-      state.allStores = parsed.filter((s) => s['店名'] && VISIBLE_STATUSES.has(s['狀態']));
+      state.allStores = parsed
+        .filter((s) => s['店名'] && VISIBLE_STATUSES.has(s['狀態']))
+        .map((s) => ({ ...s, '類別': normalizeCategory(s) }));
     } catch (err) {
       console.error('載入試算表失敗:', err);
       showToast('無法讀取試算表資料，暫時顯示種子店家資料');
       banner.classList.remove('hidden');
-      state.allStores = seedList;
+      state.allStores = seedList.map((s) => ({ ...s, '類別': normalizeCategory(s) }));
     }
     renderCategoryChips();
     applyFilters();
@@ -837,6 +872,7 @@
 
         const newStore = {
           ...payload,
+          '類別': normalizeCategory(payload),
           '有沒有實體店面': hasStore ? '是' : '否',
           '編號': data.id,
           '送出時間': new Date().toISOString(),
