@@ -169,6 +169,35 @@
       .replace(/'/g, '&#39;');
   }
 
+  function isValidSocialHandle(handle) {
+    return /^[a-zA-Z0-9._]{1,60}$/.test(String(handle || ''));
+  }
+
+  function sanitizePhoneHref(phone) {
+    const cleaned = String(phone || '').replace(/[^\d+\-()#\s]/g, '').trim();
+    return /\d{5,}/.test(cleaned) ? cleaned : '';
+  }
+
+  function isValidPhone(phone) {
+    return /^[0-9+\-()#\s]{5,30}$/.test(String(phone || '').trim());
+  }
+
+  function isAllowedEndpointUrl(rawUrl, { allowRelative = false } = {}) {
+    const val = String(rawUrl || '').trim();
+    if (!val) return false;
+    if (allowRelative && (val.startsWith('./') || val.startsWith('/'))) return true;
+    try {
+      const parsed = new URL(val);
+      if (parsed.protocol === 'https:') return true;
+      if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function showToast(msg) {
     const el = document.getElementById('toast');
     el.textContent = msg;
@@ -221,10 +250,13 @@
     }
     if (rows.length < 2) return [];
     const headers = rows[0].map((h) => h.trim());
+    const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
     return rows.slice(1).filter((r) => r.some((c) => c.trim() !== '')).map((r) => {
-      const obj = {};
+      const obj = Object.create(null);
       headers.forEach((h, idx) => {
-        obj[h] = (r[idx] || '').trim();
+        if (h && !FORBIDDEN_KEYS.has(h)) {
+          obj[h] = (r[idx] || '').trim();
+        }
       });
       return obj;
     });
@@ -248,7 +280,10 @@
   }
 
   function getStoreShareUrl(storeId) {
-    const url = new URL(window.location.href);
+    const base = window.location.origin !== 'null'
+      ? `${window.location.origin}${window.location.pathname}`
+      : window.location.href.split('?')[0].split('#')[0];
+    const url = new URL(base);
     url.searchParams.set('store', storeId);
     return url.toString();
   }
@@ -305,6 +340,15 @@
     if (isDemo) {
       banner.innerHTML = `目前顯示首批 ${seedList.length} 家脆友種子店家（設定 <code>config.js</code> 後將改讀即時試算表）。`;
       state.allStores = seedList.filter((s) => VISIBLE_STATUSES.has(s['狀態']));
+      applyFilters();
+      checkDeepLink();
+      return;
+    }
+
+    if (!isAllowedEndpointUrl(csvUrl, { allowRelative: true })) {
+      console.warn('SHEET_CSV_URL 格式不安全，已改用種子店家資料');
+      banner.classList.remove('hidden');
+      state.allStores = seedList;
       applyFilters();
       checkDeepLink();
       return;
@@ -434,8 +478,10 @@
     const drawer = document.getElementById('store-drawer');
     const content = document.getElementById('drawer-content');
 
-    const threadsHandle = (store['Threads 帳號'] || '').replace(/^@+/, '');
-    const igHandle = (store['IG 帳號'] || '').replace(/^@+/, '');
+    const rawThreads = (store['Threads 帳號'] || '').trim().replace(/^@+/, '');
+    const rawIg = (store['IG 帳號'] || '').trim().replace(/^@+/, '');
+    const threadsHandle = isValidSocialHandle(rawThreads) ? rawThreads : '';
+    const igHandle = isValidSocialHandle(rawIg) ? rawIg : '';
     const threadsUrl = threadsHandle ? `https://www.threads.net/@${encodeURIComponent(threadsHandle)}` : '';
     const igUrl = igHandle ? `https://www.instagram.com/${encodeURIComponent(igHandle)}` : '';
 
@@ -443,13 +489,19 @@
     if (store['有沒有實體店面'] !== '否' && store['地址']) {
       const q = `${store['縣市']}${store['區']}${store['地址']} ${store['店名']}`;
       navUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-    } else if (coords && coords.exact) {
+    } else if (coords && coords.exact && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
       navUrl = `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
     }
 
     const addressLine = store['有沒有實體店面'] === '否'
       ? `${escHtml(store['縣市'])}${escHtml(store['區'])}（純宅配／網購）`
       : `${escHtml(store['縣市'])}${escHtml(store['區'])}${escHtml(store['地址'])}`;
+    const safeTel = sanitizePhoneHref(store['電話']);
+    const phoneHtml = store['電話']
+      ? (safeTel
+        ? `<p class="card-meta">📞 <a href="tel:${escHtml(safeTel)}">${escHtml(store['電話'])}</a></p>`
+        : `<p class="card-meta">📞 ${escHtml(store['電話'])}</p>`)
+      : '';
 
     content.innerHTML = `
       <div class="card-top" style="padding-right:32px;">
@@ -465,7 +517,7 @@
       ${store['一句話介紹'] ? `<p class="card-intro">${escHtml(store['一句話介紹'])}</p>` : ''}
       <p class="card-meta">📍 ${addressLine}</p>
       ${store['營業時間'] ? `<p class="card-meta">🕒 ${escHtml(store['營業時間'])}</p>` : ''}
-      ${store['電話'] ? `<p class="card-meta">📞 <a href="tel:${escHtml(store['電話'])}">${escHtml(store['電話'])}</a></p>` : ''}
+      ${phoneHtml}
 
       <div class="drawer-actions">
         <button class="action-btn primary ${threadsUrl ? '' : 'disabled'}" id="btn-visit-threads" type="button" ${threadsUrl ? '' : 'disabled'}>去 Threads</button>
@@ -492,7 +544,8 @@
     }
     document.getElementById('btn-drawer-share').addEventListener('click', () => openShareModal(store));
     document.getElementById('btn-report-store').addEventListener('click', () => {
-      const adminHandle = cfg.ADMIN_THREADS_HANDLE || 'its.all.good.73';
+      const rawAdmin = String(cfg.ADMIN_THREADS_HANDLE || '').trim().replace(/^@+/, '');
+      const adminHandle = isValidSocialHandle(rawAdmin) ? rawAdmin : 'its.all.good.73';
       const msg = `想回報「${store['店名']}」（${store['編號']}）的資訊有誤：`;
       window.open(`https://www.threads.net/intent/post?text=${encodeURIComponent('@' + adminHandle + ' ' + msg)}`, '_blank', 'noopener,noreferrer');
     });
@@ -508,11 +561,16 @@
 
   async function postActionEvent(action, extra = {}) {
     const url = (cfg.EVENT_WEBHOOK_URL || '').trim();
-    if (!url || url === '__EVENT_WEBHOOK_URL__' || state.user.isDemo) return null;
+    if (!url || url === '__EVENT_WEBHOOK_URL__' || state.user.isDemo || !isAllowedEndpointUrl(url)) return null;
     try {
+      const headers = { 'Content-Type': 'application/json; charset=utf-8' };
+      if (window.liff && typeof window.liff.getIDToken === 'function') {
+        const idToken = window.liff.getIDToken();
+        if (idToken) headers.Authorization = `Bearer ${idToken}`;
+      }
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        headers,
         body: JSON.stringify({
           action,
           userId: state.user.userId,
@@ -704,6 +762,15 @@
       if (!payload['Threads 帳號'] && !payload['IG 帳號']) {
         return showFormError('Threads 帳號與 IG 帳號至少要填一個');
       }
+      if (payload['Threads 帳號'] && !isValidSocialHandle(payload['Threads 帳號'])) {
+        return showFormError('Threads 帳號請填寫純帳號名稱（僅限英數、底線或點號，勿貼網址）');
+      }
+      if (payload['IG 帳號'] && !isValidSocialHandle(payload['IG 帳號'])) {
+        return showFormError('IG 帳號請填寫純帳號名稱（僅限英數、底線或點號，勿貼網址）');
+      }
+      if (payload['電話'] && !isValidPhone(payload['電話'])) {
+        return showFormError('電話格式僅能包含數字與 + - ( ) #');
+      }
       if ([...payload['一句話介紹']].length > 30) {
         return showFormError('一句話介紹最多 30 個字');
       }
@@ -712,6 +779,9 @@
       const webhookUrl = (cfg.SUBMIT_WEBHOOK_URL || '').trim();
       if (!webhookUrl || webhookUrl === '__SUBMIT_WEBHOOK_URL__') {
         return showFormError('尚未在 config.js 設定 SUBMIT_WEBHOOK_URL（n8n 收單網址）');
+      }
+      if (!isAllowedEndpointUrl(webhookUrl)) {
+        return showFormError('SUBMIT_WEBHOOK_URL 必須為安全的 HTTPS 網址');
       }
 
       const btn = document.getElementById('btn-submit-form');
@@ -825,8 +895,12 @@
     document.getElementById('btn-download-card').addEventListener('click', () => {
       const canvas = document.getElementById('share-card-canvas');
       if (!canvas || !state.shareTargetStore) return;
+      const safeName = String(state.shareTargetStore['店名'] || 'store')
+        .replace(/[\\/:*?"<>|\x00-\x1f]/g, '_')
+        .replace(/\.{2,}/g, '_')
+        .trim() || 'store';
       const link = document.createElement('a');
-      link.download = `${state.shareTargetStore['店名']}-脆友美食地圖.png`;
+      link.download = `${safeName}-脆友美食地圖.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
       showToast('已下載宣傳圖卡！');
