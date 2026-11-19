@@ -429,11 +429,10 @@
   }
 
   function createWarmMarkerIcon(store) {
-    const isPending = store['狀態'] === '確認中';
     const label = escHtml(store['店名'] || '');
     return L.divIcon({
       className: 'warm-marker-wrap',
-      html: `<div class="warm-marker-pin${isPending ? ' pending' : ''}"></div><div class="warm-marker-label">${label}</div>`,
+      html: `<div class="warm-marker-pin"></div><div class="warm-marker-label">${label}</div>`,
       iconSize: [120, 56],
       iconAnchor: [60, 32],
     });
@@ -467,7 +466,6 @@
   }
 
   function statusBadgeHtml(status) {
-    if (status === '確認中') return '<span class="badge badge-pending">確認中</span>';
     if (status === '待修改') return '<span class="badge badge-fix">待修改</span>';
     return '';
   }
