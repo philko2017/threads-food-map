@@ -1,0 +1,453 @@
+{
+  "name": "脆友美食地圖｜收單（自動執行）",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Taipei"
+  },
+  "nodes": [
+    {
+      "id": "fm-001",
+      "name": "收單 Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "food-map-submit-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "food-map-submit",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      }
+    },
+    {
+      "id": "fm-002",
+      "name": "檢查資料",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const raw = ($input.first().json && ($input.first().json.body || $input.first().json)) || {};\n\nconst CATEGORIES = ['餐廳', '小吃', '咖啡', '甜點', '飲料', '烘焙', '伴手禮', '酒吧居酒屋'];\nconst CITIES = ['台北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣', '苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣'];\nconst HANDLE_RE = /^[a-zA-Z0-9._]{1,60}$/;\nconst PHONE_RE = /^[0-9+\\-()#\\s]{5,30}$/;\n\nfunction cleanStr(val, maxLen) {\n  if (val === undefined || val === null) return '';\n  let s = String(val).trim().slice(0, maxLen);\n  if (/^[=+\\-@\\t\\r]/.test(s)) s = \"'\" + s;\n  return s;\n}\n\nfunction fail(error, message) {\n  return [{\n    json: {\n      ok: false,\n      status: 400,\n      res: JSON.stringify({ ok: false, error, message })\n    }\n  }];\n}\n\nconst storeName = cleanStr(raw['店名'], 60);\nif (!storeName) return fail('store_name', '請填寫店名');\n\nconst category = cleanStr(raw['類別'], 20);\nif (!CATEGORIES.includes(category)) {\n  return fail('category', '類別請選擇：' + CATEGORIES.join('、'));\n}\n\nconst rawHasStore = raw['有沒有實體店面'];\nlet hasStorefront = null;\nif (rawHasStore === true || rawHasStore === 'true' || rawHasStore === '是') {\n  hasStorefront = true;\n} else if (rawHasStore === false || rawHasStore === 'false' || rawHasStore === '否') {\n  hasStorefront = false;\n}\nif (hasStorefront === null) {\n  return fail('has_storefront', '請選擇有沒有實體店面');\n}\n\nconst city = String(raw['縣市'] || '').trim().slice(0, 20);\nif (!CITIES.includes(city)) return fail('city', '請選擇有效的縣市');\n\nconst district = cleanStr(raw['區'], 20);\nif (!district) return fail('district', '請填寫區');\n\nconst address = cleanStr(raw['地址'], 120);\nif (hasStorefront && !address) {\n  return fail('address', '有實體店面時請填寫地址');\n}\n\nconst threads = String(raw['Threads 帳號'] || '').trim().replace(/^@+/, '').slice(0, 60);\nconst ig = String(raw['IG 帳號'] || '').trim().replace(/^@+/, '').slice(0, 60);\nif (!threads && !ig) {\n  return fail('social', 'Threads 帳號與 IG 帳號至少要填一個');\n}\nif (threads && !HANDLE_RE.test(threads)) {\n  return fail('threads', 'Threads 帳號格式不正確');\n}\nif (ig && !HANDLE_RE.test(ig)) {\n  return fail('ig', 'IG 帳號格式不正確');\n}\n\nconst introRaw = raw['一句話介紹'] === undefined || raw['一句話介紹'] === null ? '' : String(raw['一句話介紹']).trim();\nif ([...introRaw].length > 30) {\n  return fail('intro', '一句話介紹最多 30 個字');\n}\nconst intro = /^[=+\\-@\\t\\r]/.test(introRaw) ? \"'\" + introRaw : introRaw;\n\nconst rawPhone = String(raw['電話'] || '').trim().slice(0, 30);\nif (rawPhone && !PHONE_RE.test(rawPhone)) {\n  return fail('phone', '電話格式不正確');\n}\nconst phone = cleanStr(rawPhone, 30);\nconst hours = cleanStr(raw['營業時間'], 100);\n\nconst rawConsent = raw['同意聲明'];\nconst consent = rawConsent === true || rawConsent === 'true';\nif (!consent) {\n  return fail('consent', '請勾選同意聲明');\n}\n\nconst lineAccount = cleanStr(raw['店家 LINE 帳號'], 60);\n\nreturn [{\n  json: {\n    ok: true,\n    data: {\n      '店名': storeName,\n      '類別': category,\n      '有沒有實體店面': hasStorefront ? '是' : '否',\n      hasStorefront,\n      '縣市': city,\n      '區': district,\n      '地址': address,\n      'Threads 帳號': threads,\n      'IG 帳號': ig,\n      '一句話介紹': intro,\n      '電話': phone,\n      '營業時間': hours,\n      '同意聲明': '是',\n      '店家 LINE 帳號': lineAccount\n    }\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "fm-003",
+      "name": "資料是否合格",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $json.ok ? 1 : 0 }}"
+      }
+    },
+    {
+      "id": "fm-004",
+      "name": "回應格式錯誤",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        680,
+        -140
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.res }}",
+        "options": {
+          "responseCode": "={{ $json.status }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "fm-005",
+      "name": "讀取店家試算表",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        80
+      ],
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1AJS9NT5eRjAQBpZnj5xaKPl-1SxudyG7hbX7VCfh0Rw/values/'店家'!A:T",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {}
+      },
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "__GOOGLE_OAUTH_CRED_ID__",
+          "name": "Google philko.2017"
+        }
+      }
+    },
+    {
+      "id": "fm-006",
+      "name": "查重複",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        80
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const data = $('檢查資料').first().json.data;\nconst payload = $input.first().json || {};\nconst values = Array.isArray(payload.values) ? payload.values : [];\nconst headers = values[0] || [];\nconst rows = values.slice(1).map((r) => {\n  const obj = {};\n  headers.forEach((h, i) => { obj[String(h || '').trim()] = String(r[i] || '').trim(); });\n  return obj;\n});\n\nfunction norm(str) {\n  return String(str || '')\n    .replace(/[\\uFF01-\\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))\n    .replace(/[\\s\\u3000]+/g, '')\n    .toLowerCase();\n}\n\nconst targetName = norm(data['店名']);\nconst targetCity = norm(data['縣市']);\nconst targetDistrict = norm(data['區']);\n\nconst isDup = rows.some((row) => {\n  if (!row['店名']) return false;\n  if (String(row['狀態'] || '').trim() === '已下架') return false;\n  return (\n    norm(row['店名']) === targetName &&\n    norm(row['縣市']) === targetCity &&\n    norm(row['區']) === targetDistrict\n  );\n});\n\nif (isDup) {\n  return [{\n    json: {\n      ok: false,\n      status: 409,\n      res: JSON.stringify({\n        ok: false,\n        error: 'duplicate',\n        message: '這家店已經在地圖上了'\n      })\n    }\n  }];\n}\n\nconst needGeocode = Boolean(data.hasStorefront && data['地址']);\nreturn [{\n  json: {\n    ok: true,\n    needGeocode,\n    data\n  }\n}];"
+      }
+    },
+    {
+      "id": "fm-007",
+      "name": "是否重複或需轉座標",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1120,
+        80
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ !$json.ok ? 0 : ($json.needGeocode ? 1 : 2) }}"
+      }
+    },
+    {
+      "id": "fm-008",
+      "name": "回應重複",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1360,
+        -100
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.res }}",
+        "options": {
+          "responseCode": "={{ $json.status }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "fm-009",
+      "name": "地址轉座標",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        80
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://nominatim.openstreetmap.org/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.data['縣市'] + ' ' + $json.data['區'] + ' ' + $json.data['地址'] }}"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "countrycodes",
+              "value": "tw"
+            },
+            {
+              "name": "accept-language",
+              "value": "zh-TW"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "ThreadsFoodMap/1.0 (its.all.good.73)"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "fm-010",
+      "name": "組一列",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        160
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const data = $('檢查資料').first().json.data;\nconst needGeocode = Boolean($('查重複').first().json.needGeocode);\n\nlet lat = '';\nlet lng = '';\nlet geocoded = false;\n\nif (needGeocode) {\n  const rawGeo = $input.first().json;\n  const hit = Array.isArray(rawGeo) ? rawGeo[0] : rawGeo;\n  if (hit && hit.lat !== undefined && hit.lon !== undefined) {\n    const latNum = parseFloat(hit.lat);\n    const lonNum = parseFloat(hit.lon);\n    if (!Number.isNaN(latNum) && !Number.isNaN(lonNum)) {\n      lat = String(latNum);\n      lng = String(lonNum);\n      geocoded = true;\n    }\n  }\n}\n\nconst chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';\nconst timePart = Date.now().toString(36).toUpperCase().slice(-3);\nlet randPart = '';\nfor (let i = 0; i < 3; i++) {\n  randPart += chars[Math.floor(Math.random() * chars.length)];\n}\nconst id = 'FM-' + timePart + randPart;\n\nconst twIso = new Date(Date.now() + 8 * 3600 * 1000).toISOString().replace('Z', '+08:00');\n\nconst row = {\n  '編號': id,\n  '送出時間': twIso,\n  '店名': data['店名'],\n  '類別': data['類別'],\n  '有沒有實體店面': data['有沒有實體店面'],\n  '縣市': data['縣市'],\n  '區': data['區'],\n  '地址': data['地址'],\n  'Threads 帳號': data['Threads 帳號'],\n  'IG 帳號': data['IG 帳號'],\n  '一句話介紹': data['一句話介紹'],\n  '電話': data['電話'],\n  '營業時間': data['營業時間'],\n  '同意聲明': data['同意聲明'],\n  '緯度': lat,\n  '經度': lng,\n  '狀態': '確認中',\n  '審核備註': '',\n  '審核日期': '',\n  '店家 LINE 帳號': data['店家 LINE 帳號'] || ''\n};\n\nconst links = [];\nif (data['Threads 帳號']) links.push('Threads：https://www.threads.net/@' + data['Threads 帳號']);\nif (data['IG 帳號']) links.push('IG：https://www.instagram.com/' + data['IG 帳號']);\n\nconst lineText = `新店家：${data['店名']}（${data['類別']}，${data['縣市']}${data['區']}）狀態確認中\\n編號：${id}\\n${links.join('\\n')}`;\n\nreturn [{\n  json: {\n    row,\n    response: {\n      ok: true,\n      id,\n      status: '確認中',\n      geocoded,\n      message: '已上架，確認中，三天內完成審核'\n    },\n    lineText\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "fm-011",
+      "name": "寫入試算表",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1820,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1AJS9NT5eRjAQBpZnj5xaKPl-1SxudyG7hbX7VCfh0Rw/values/'店家'!A:T:append?valueInputOption=USER_ENTERED",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ values: [[ $json.row['編號'], $json.row['送出時間'], $json.row['店名'], $json.row['類別'], $json.row['有沒有實體店面'], $json.row['縣市'], $json.row['區'], $json.row['地址'], $json.row['Threads 帳號'], $json.row['IG 帳號'], $json.row['一句話介紹'], $json.row['電話'], $json.row['營業時間'], $json.row['同意聲明'], $json.row['緯度'], $json.row['經度'], $json.row['狀態'], $json.row['審核備註'], $json.row['審核日期'], $json.row['店家 LINE 帳號'] ]] }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "__GOOGLE_OAUTH_CRED_ID__",
+          "name": "Google philko.2017"
+        }
+      }
+    },
+    {
+      "id": "fm-012",
+      "name": "回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2040,
+        160
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($('組一列').first().json.response) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "fm-013",
+      "name": "通知 Phil",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2260,
+        160
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ to: '__NOTIFY_TO__', messages: [{ type: 'text', text: $('組一列').first().json.lineText }] }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__LINE_CRED_ID__",
+          "name": "脆友美食地圖 LINE"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "收單 Webhook": {
+      "main": [
+        [
+          {
+            "node": "檢查資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "檢查資料": {
+      "main": [
+        [
+          {
+            "node": "資料是否合格",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "資料是否合格": {
+      "main": [
+        [
+          {
+            "node": "回應格式錯誤",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "讀取店家試算表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "讀取店家試算表": {
+      "main": [
+        [
+          {
+            "node": "查重複",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查重複": {
+      "main": [
+        [
+          {
+            "node": "是否重複或需轉座標",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否重複或需轉座標": {
+      "main": [
+        [
+          {
+            "node": "回應重複",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "地址轉座標",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "組一列",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "地址轉座標": {
+      "main": [
+        [
+          {
+            "node": "組一列",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "組一列": {
+      "main": [
+        [
+          {
+            "node": "寫入試算表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "寫入試算表": {
+      "main": [
+        [
+          {
+            "node": "回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "回應成功": {
+      "main": [
+        [
+          {
+            "node": "通知 Phil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
