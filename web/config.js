@@ -3,10 +3,10 @@
 window.FOOD_MAP_CONFIG = {
   // Google 試算表「檔案 -> 共用 -> 發佈到網路 -> 選擇『店家』工作表與『逗號分隔值 (.csv)』」產生的網址
   // 若留空或維持 __SHEET_CSV_URL__，網頁會自動載入範例資料供預覽介面
-  SHEET_CSV_URL: '__SHEET_CSV_URL__',
+  SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT7Zo-EfTNewLhOCp5wDytErbfiFb6BbIKyYg2sU0TyD_y_dFUY9rnzBDc_060plzJdhKYl3wA7S0BO/pub?gid=163751454&single=true&output=csv',
 
   // n8n 收單 Webhook 網址（例如：https://你的n8n網域/webhook/food-map-submit）
-  SUBMIT_WEBHOOK_URL: '__SUBMIT_WEBHOOK_URL__',
+  SUBMIT_WEBHOOK_URL: 'https://idly-junction-altitude.ngrok-free.dev/webhook/food-map-submit',
 
   // 階段 5～7：n8n 互動與點數 API Webhook 網址（例如：https://你的n8n網域/webhook/food-map-action）
   // 未設定時，任務與個人頁會以示範模式呈現
