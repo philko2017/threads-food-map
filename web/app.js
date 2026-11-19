@@ -550,7 +550,6 @@
         <span class="badge badge-cat">${escHtml(store['類別'])}</span>
         <span class="badge">${escHtml(store['縣市'])}${escHtml(store['區'])}</span>
         ${store['等級徽章'] ? `<span class="badge badge-level">${escHtml(store['等級徽章'])}</span>` : ''}
-        <span class="badge">👣 人氣 ${getStorePopularity(store)}</span>
       </div>
       ${store['一句話介紹'] ? `<p class="card-intro">${escHtml(store['一句話介紹'])}</p>` : ''}
       <p class="card-meta">📍 ${addressLine}</p>
