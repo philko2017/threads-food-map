@@ -94,7 +94,7 @@
       <ol>
         <li><strong>查得到</strong>：Threads、IG 或 Google 地圖至少一個管道，看得到店家正在營業、有近期貼文。</li>
         <li><strong>是吃的</strong>：餐廳、小吃、咖啡、甜點、飲料、烘焙，以及可以直接吃的伴手禮。</li>
-        <li><strong>本人或經同意</strong>：送出者是店家本人，或已取得店家同意。</li>
+        <li><strong>公開或經同意</strong>：整理自店家公開社群／地圖資訊，或由店家本人與熱心網友登錄。</li>
         <li><strong>資料齊全</strong>：店名、類別、地區，加上至少一個聯絡管道。</li>
       </ol>
       <h4>不收錄，會直接下架</h4>
@@ -340,6 +340,7 @@
     if (isDemo) {
       banner.innerHTML = `目前顯示首批 ${seedList.length} 家脆友種子店家（設定 <code>config.js</code> 後將改讀即時試算表）。`;
       state.allStores = seedList.filter((s) => VISIBLE_STATUSES.has(s['狀態']));
+      renderCategoryChips();
       applyFilters();
       checkDeepLink();
       return;
@@ -349,6 +350,7 @@
       console.warn('SHEET_CSV_URL 格式不安全，已改用種子店家資料');
       banner.classList.remove('hidden');
       state.allStores = seedList;
+      renderCategoryChips();
       applyFilters();
       checkDeepLink();
       return;
@@ -366,8 +368,34 @@
       banner.classList.remove('hidden');
       state.allStores = seedList;
     }
+    renderCategoryChips();
     applyFilters();
     checkDeepLink();
+  }
+
+  function renderCategoryChips() {
+    const container = document.getElementById('category-chips');
+    if (!container) return;
+    const counts = new Map();
+    state.allStores.forEach((s) => {
+      const cat = String(s['類別'] || '').trim();
+      if (cat) counts.set(cat, (counts.get(cat) || 0) + 1);
+    });
+    const categories = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hant'))
+      .map(([cat]) => cat);
+
+    if (state.selectedCategory !== '全部' && !counts.has(state.selectedCategory)) {
+      state.selectedCategory = '全部';
+    }
+
+    const chips = ['全部', ...categories];
+    container.innerHTML = chips
+      .map((cat) => {
+        const active = state.selectedCategory === cat ? ' active' : '';
+        return `<button class="chip${active}" data-category="${escHtml(cat)}" type="button">${escHtml(cat)}</button>`;
+      })
+      .join('');
   }
 
   function applyFilters() {
@@ -400,6 +428,16 @@
     renderList();
   }
 
+  function createWarmMarkerIcon(store) {
+    const isPending = store['狀態'] === '確認中';
+    return L.divIcon({
+      className: 'warm-marker-wrap',
+      html: `<div class="warm-marker-pin${isPending ? ' pending' : ''}"></div>`,
+      iconSize: [28, 34],
+      iconAnchor: [14, 32],
+    });
+  }
+
   function renderMarkers() {
     state.clusterGroup.clearLayers();
     state.markersById.clear();
@@ -411,6 +449,7 @@
 
       const marker = L.marker([coords.lat, coords.lng], {
         title: store['店名'],
+        icon: createWarmMarkerIcon(store),
       });
       marker.on('click', () => openStoreDrawer(store, coords));
       state.clusterGroup.addLayer(marker);
@@ -774,7 +813,6 @@
       if ([...payload['一句話介紹']].length > 30) {
         return showFormError('一句話介紹最多 30 個字');
       }
-      if (!payload['同意聲明']) return showFormError('請勾選同意聲明');
 
       const webhookUrl = (cfg.SUBMIT_WEBHOOK_URL || '').trim();
       if (!webhookUrl || webhookUrl === '__SUBMIT_WEBHOOK_URL__') {
@@ -810,6 +848,7 @@
         };
         state.lastSubmittedStore = newStore;
         state.allStores.unshift(newStore);
+        renderCategoryChips();
         applyFilters();
 
         document.getElementById('success-id').textContent = data.id || '已送出';

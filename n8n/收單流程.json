@@ -11,7 +11,10 @@
       "name": "收單 Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "food-map-submit-webhook",
       "parameters": {
         "httpMethod": "POST",
@@ -27,11 +30,14 @@
       "name": "檢查資料",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0],
+      "position": [
+        220,
+        0
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const raw = ($input.first().json && ($input.first().json.body || $input.first().json)) || {};\n\nconst CATEGORIES = ['餐廳', '小吃', '咖啡', '甜點', '飲料', '烘焙', '伴手禮', '酒吧居酒屋'];\nconst CITIES = ['台北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣', '苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣'];\nconst HANDLE_RE = /^[a-zA-Z0-9._]{1,60}$/;\nconst PHONE_RE = /^[0-9+\\-()#\\s]{5,30}$/;\n\nfunction cleanStr(val, maxLen) {\n  if (val === undefined || val === null) return '';\n  let s = String(val).trim().slice(0, maxLen);\n  if (/^[=+\\-@\\t\\r]/.test(s)) s = \"'\" + s;\n  return s;\n}\n\nfunction fail(error, message) {\n  return [{\n    json: {\n      ok: false,\n      status: 400,\n      res: JSON.stringify({ ok: false, error, message })\n    }\n  }];\n}\n\nconst storeName = cleanStr(raw['店名'], 60);\nif (!storeName) return fail('store_name', '請填寫店名');\n\nconst category = cleanStr(raw['類別'], 20);\nif (!CATEGORIES.includes(category)) {\n  return fail('category', '類別請選擇：' + CATEGORIES.join('、'));\n}\n\nconst rawHasStore = raw['有沒有實體店面'];\nlet hasStorefront = null;\nif (rawHasStore === true || rawHasStore === 'true' || rawHasStore === '是') {\n  hasStorefront = true;\n} else if (rawHasStore === false || rawHasStore === 'false' || rawHasStore === '否') {\n  hasStorefront = false;\n}\nif (hasStorefront === null) {\n  return fail('has_storefront', '請選擇有沒有實體店面');\n}\n\nconst city = String(raw['縣市'] || '').trim().slice(0, 20);\nif (!CITIES.includes(city)) return fail('city', '請選擇有效的縣市');\n\nconst district = cleanStr(raw['區'], 20);\nif (!district) return fail('district', '請填寫區');\n\nconst address = cleanStr(raw['地址'], 120);\nif (hasStorefront && !address) {\n  return fail('address', '有實體店面時請填寫地址');\n}\n\nconst threads = String(raw['Threads 帳號'] || '').trim().replace(/^@+/, '').slice(0, 60);\nconst ig = String(raw['IG 帳號'] || '').trim().replace(/^@+/, '').slice(0, 60);\nif (!threads && !ig) {\n  return fail('social', 'Threads 帳號與 IG 帳號至少要填一個');\n}\nif (threads && !HANDLE_RE.test(threads)) {\n  return fail('threads', 'Threads 帳號格式不正確');\n}\nif (ig && !HANDLE_RE.test(ig)) {\n  return fail('ig', 'IG 帳號格式不正確');\n}\n\nconst introRaw = raw['一句話介紹'] === undefined || raw['一句話介紹'] === null ? '' : String(raw['一句話介紹']).trim();\nif ([...introRaw].length > 30) {\n  return fail('intro', '一句話介紹最多 30 個字');\n}\nconst intro = /^[=+\\-@\\t\\r]/.test(introRaw) ? \"'\" + introRaw : introRaw;\n\nconst rawPhone = String(raw['電話'] || '').trim().slice(0, 30);\nif (rawPhone && !PHONE_RE.test(rawPhone)) {\n  return fail('phone', '電話格式不正確');\n}\nconst phone = cleanStr(rawPhone, 30);\nconst hours = cleanStr(raw['營業時間'], 100);\n\nconst rawConsent = raw['同意聲明'];\nconst consent = rawConsent === true || rawConsent === 'true';\nif (!consent) {\n  return fail('consent', '請勾選同意聲明');\n}\n\nconst lineAccount = cleanStr(raw['店家 LINE 帳號'], 60);\n\nreturn [{\n  json: {\n    ok: true,\n    data: {\n      '店名': storeName,\n      '類別': category,\n      '有沒有實體店面': hasStorefront ? '是' : '否',\n      hasStorefront,\n      '縣市': city,\n      '區': district,\n      '地址': address,\n      'Threads 帳號': threads,\n      'IG 帳號': ig,\n      '一句話介紹': intro,\n      '電話': phone,\n      '營業時間': hours,\n      '同意聲明': '是',\n      '店家 LINE 帳號': lineAccount\n    }\n  }\n}];\n"
+        "jsCode": "const raw = ($input.first().json && ($input.first().json.body || $input.first().json)) || {};\n\nconst CATEGORIES = ['餐廳', '小吃', '咖啡', '甜點', '飲料', '烘焙', '伴手禮', '酒吧居酒屋'];\nconst CITIES = ['台北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣', '苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣'];\nconst HANDLE_RE = /^[a-zA-Z0-9._]{1,60}$/;\nconst PHONE_RE = /^[0-9+\\-()#\\s]{5,30}$/;\n\nfunction cleanStr(val, maxLen) {\n  if (val === undefined || val === null) return '';\n  let s = String(val).trim().slice(0, maxLen);\n  if (/^[=+\\-@\\t\\r]/.test(s)) s = \"'\" + s;\n  return s;\n}\n\nfunction fail(error, message) {\n  return [{\n    json: {\n      ok: false,\n      status: 400,\n      res: JSON.stringify({ ok: false, error, message })\n    }\n  }];\n}\n\nconst storeName = cleanStr(raw['店名'], 60);\nif (!storeName) return fail('store_name', '請填寫店名');\n\nconst category = cleanStr(raw['類別'], 20);\nif (!category) {\n  return fail('category', '請填寫特色分類（例如：臭豆腐、麵線）');\n}\n\nconst rawHasStore = raw['有沒有實體店面'];\nlet hasStorefront = null;\nif (rawHasStore === true || rawHasStore === 'true' || rawHasStore === '是') {\n  hasStorefront = true;\n} else if (rawHasStore === false || rawHasStore === 'false' || rawHasStore === '否') {\n  hasStorefront = false;\n}\nif (hasStorefront === null) {\n  return fail('has_storefront', '請選擇有沒有實體店面');\n}\n\nconst city = String(raw['縣市'] || '').trim().slice(0, 20);\nif (!CITIES.includes(city)) return fail('city', '請選擇有效的縣市');\n\nconst district = cleanStr(raw['區'], 20);\nif (!district) return fail('district', '請填寫區');\n\nconst address = cleanStr(raw['地址'], 120);\nif (hasStorefront && !address) {\n  return fail('address', '有實體店面時請填寫地址');\n}\n\nconst threads = String(raw['Threads 帳號'] || '').trim().replace(/^@+/, '').slice(0, 60);\nconst ig = String(raw['IG 帳號'] || '').trim().replace(/^@+/, '').slice(0, 60);\nif (!threads && !ig) {\n  return fail('social', 'Threads 帳號與 IG 帳號至少要填一個');\n}\nif (threads && !HANDLE_RE.test(threads)) {\n  return fail('threads', 'Threads 帳號格式不正確');\n}\nif (ig && !HANDLE_RE.test(ig)) {\n  return fail('ig', 'IG 帳號格式不正確');\n}\n\nconst introRaw = raw['一句話介紹'] === undefined || raw['一句話介紹'] === null ? '' : String(raw['一句話介紹']).trim();\nif ([...introRaw].length > 30) {\n  return fail('intro', '一句話介紹最多 30 個字');\n}\nconst intro = /^[=+\\-@\\t\\r]/.test(introRaw) ? \"'\" + introRaw : introRaw;\n\nconst rawPhone = String(raw['電話'] || '').trim().slice(0, 30);\nif (rawPhone && !PHONE_RE.test(rawPhone)) {\n  return fail('phone', '電話格式不正確');\n}\nconst phone = cleanStr(rawPhone, 30);\nconst hours = cleanStr(raw['營業時間'], 100);\n\nconst rawConsent = raw['同意聲明'];\nconst consent = rawConsent === true || rawConsent === 'true' || rawConsent === '是';\n\nconst lineAccount = cleanStr(raw['店家 LINE 帳號'], 60);\n\nreturn [{\n  json: {\n    ok: true,\n    data: {\n      '店名': storeName,\n      '類別': category,\n      '有沒有實體店面': hasStorefront ? '是' : '否',\n      hasStorefront,\n      '縣市': city,\n      '區': district,\n      '地址': address,\n      'Threads 帳號': threads,\n      'IG 帳號': ig,\n      '一句話介紹': intro,\n      '電話': phone,\n      '營業時間': hours,\n      '同意聲明': consent ? '是' : '否',\n      '店家 LINE 帳號': lineAccount\n    }\n  }\n}];\n"
       }
     },
     {
@@ -39,7 +45,10 @@
       "name": "資料是否合格",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [440, 0],
+      "position": [
+        440,
+        0
+      ],
       "parameters": {
         "mode": "expression",
         "numberOutputs": 2,
@@ -51,7 +60,10 @@
       "name": "回應格式錯誤",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [680, -140],
+      "position": [
+        680,
+        -140
+      ],
       "parameters": {
         "respondWith": "text",
         "responseBody": "={{ $json.res }}",
@@ -77,7 +89,10 @@
       "name": "讀取店家試算表",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [680, 80],
+      "position": [
+        680,
+        80
+      ],
       "alwaysOutputData": true,
       "parameters": {
         "operation": "read",
@@ -105,7 +120,10 @@
       "name": "查重複",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 80],
+      "position": [
+        900,
+        80
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
@@ -117,7 +135,10 @@
       "name": "是否重複或需轉座標",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [1120, 80],
+      "position": [
+        1120,
+        80
+      ],
       "parameters": {
         "mode": "expression",
         "numberOutputs": 3,
@@ -129,7 +150,10 @@
       "name": "回應重複",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1360, -100],
+      "position": [
+        1360,
+        -100
+      ],
       "parameters": {
         "respondWith": "text",
         "responseBody": "={{ $json.res }}",
@@ -155,7 +179,10 @@
       "name": "地址轉座標",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1360, 80],
+      "position": [
+        1360,
+        80
+      ],
       "onError": "continueRegularOutput",
       "alwaysOutputData": true,
       "parameters": {
@@ -203,7 +230,10 @@
       "name": "組一列",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1600, 160],
+      "position": [
+        1600,
+        160
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
@@ -215,7 +245,10 @@
       "name": "寫入試算表",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [1820, 160],
+      "position": [
+        1820,
+        160
+      ],
       "parameters": {
         "operation": "append",
         "documentId": {
@@ -267,7 +300,10 @@
       "name": "回應成功",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2040, 160],
+      "position": [
+        2040,
+        160
+      ],
       "parameters": {
         "respondWith": "text",
         "responseBody": "={{ JSON.stringify($('組一列').first().json.response) }}",
@@ -293,7 +329,10 @@
       "name": "通知 Phil",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2260, 160],
+      "position": [
+        2260,
+        160
+      ],
       "onError": "continueRegularOutput",
       "parameters": {
         "method": "POST",

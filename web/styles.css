@@ -990,3 +990,66 @@ html, body {
   padding: 8px 10px;
   font-size: 13px;
 }
+
+/* 暖色系地圖標記與群集 */
+.warm-marker-wrap {
+  background: transparent;
+  border: none;
+}
+
+.warm-marker-pin {
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 0;
+  background: #ea580c;
+  border: 2.5px solid #ffffff;
+  transform: rotate(-45deg);
+  box-shadow: 0 3px 8px rgba(154, 52, 18, 0.45);
+  position: relative;
+}
+
+.warm-marker-pin::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff7ed;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.warm-marker-pin.pending {
+  background: #f59e0b;
+}
+
+.marker-cluster-small {
+  background-color: rgba(251, 146, 60, 0.45);
+}
+
+.marker-cluster-small div {
+  background-color: #f97316;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.marker-cluster-medium {
+  background-color: rgba(234, 88, 12, 0.45);
+}
+
+.marker-cluster-medium div {
+  background-color: #ea580c;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.marker-cluster-large {
+  background-color: rgba(194, 65, 12, 0.45);
+}
+
+.marker-cluster-large div {
+  background-color: #c2410c;
+  color: #ffffff;
+  font-weight: 700;
+}

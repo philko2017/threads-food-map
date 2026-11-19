@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="anonymous" />
-  <link rel="stylesheet" href="./styles.css?v=20261119-1" />
+  <link rel="stylesheet" href="./styles.css?v=20261120-1" />
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -45,14 +45,6 @@
     <section class="filter-bar" aria-label="篩選店家">
       <div class="category-chips" id="category-chips">
         <button class="chip active" data-category="全部" type="button">全部</button>
-        <button class="chip" data-category="餐廳" type="button">餐廳</button>
-        <button class="chip" data-category="小吃" type="button">小吃</button>
-        <button class="chip" data-category="咖啡" type="button">咖啡</button>
-        <button class="chip" data-category="甜點" type="button">甜點</button>
-        <button class="chip" data-category="飲料" type="button">飲料</button>
-        <button class="chip" data-category="烘焙" type="button">烘焙</button>
-        <button class="chip" data-category="伴手禮" type="button">伴手禮</button>
-        <button class="chip" data-category="酒吧居酒屋" type="button">酒吧居酒屋</button>
       </div>
       <div class="filter-row-2">
         <select id="city-filter" aria-label="篩選縣市">
@@ -151,18 +143,18 @@
           </div>
 
           <div class="form-group">
-            <label for="f-category">類別 <span class="req">*</span></label>
-            <select id="f-category" name="類別" required>
-              <option value="">請選擇類別</option>
-              <option value="餐廳">餐廳</option>
-              <option value="小吃">小吃</option>
-              <option value="咖啡">咖啡</option>
-              <option value="甜點">甜點</option>
-              <option value="飲料">飲料</option>
-              <option value="烘焙">烘焙</option>
-              <option value="伴手禮">伴手禮</option>
-              <option value="酒吧居酒屋">酒吧居酒屋</option>
-            </select>
+            <label for="f-category">特色分類 <span class="req">*</span></label>
+            <input id="f-category" name="類別" type="text" maxlength="20" required list="category-suggestions" placeholder="例如：臭豆腐、麵線、手沖咖啡" />
+            <datalist id="category-suggestions">
+              <option value="臭豆腐"></option>
+              <option value="麵線"></option>
+              <option value="咖啡"></option>
+              <option value="甜點"></option>
+              <option value="蔥油餅"></option>
+              <option value="早午餐"></option>
+              <option value="飲料"></option>
+              <option value="火鍋"></option>
+            </datalist>
           </div>
 
           <div class="form-group">
@@ -227,8 +219,8 @@
 
           <div class="form-group consent-box">
             <label class="checkbox-label">
-              <input id="f-consent" name="同意聲明" type="checkbox" required />
-              <span>我是店家本人或已獲店家同意，同意將以上資料公開於脆友美食地圖。 <span class="req">*</span></span>
+              <input id="f-consent" name="同意聲明" type="checkbox" />
+              <span>我是店家本人或已獲店家同意（選填；熱心網友整理公開資訊可直接略過）。</span>
             </label>
           </div>
 
@@ -326,8 +318,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr" crossorigin="anonymous"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" crossorigin="anonymous" defer></script>
-  <script src="./seed_stores.js?v=20261119-2"></script>
-  <script src="./config.js?v=20261119-2"></script>
-  <script src="./app.js?v=20261119-2"></script>
+  <script src="./seed_stores.js?v=20261120-1"></script>
+  <script src="./config.js?v=20261120-1"></script>
+  <script src="./app.js?v=20261120-1"></script>
 </body>
 </html>
