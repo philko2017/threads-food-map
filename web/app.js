@@ -240,8 +240,8 @@
   }
 
   async function initVisitCounter() {
-    const ns = String(cfg.COUNTER_NAMESPACE || '').trim();
-    if (!ns || !/^[a-zA-Z0-9._-]{3,64}$/.test(ns)) return;
+    const apiUrl = String(cfg.COUNTER_API_URL || '').trim();
+    if (!apiUrl || apiUrl === '__COUNTER_API_URL__' || !isAllowedEndpointUrl(apiUrl)) return;
 
     const bar = document.getElementById('visit-stats-counts');
     const visitorsEl = document.getElementById('stat-visitors');
@@ -250,9 +250,8 @@
 
     const host = window.location.hostname || '';
     const isLocal = !host || host === 'localhost' || host === '127.0.0.1';
-    const base = 'https://abacus.jasoncameron.dev';
-    const visitorKey = 'tfm_visitor_counted_v1';
-    const cacheKey = 'tfm_visit_stats_cache_v1';
+    const visitorKey = 'tfm_visitor_counted_v2';
+    const cacheKey = 'tfm_visit_stats_cache_v2';
 
     let alreadyVisited = false;
     let cachedStats = null;
@@ -277,69 +276,49 @@
       bar.classList.remove('hidden');
       try {
         window.localStorage.setItem(cacheKey, JSON.stringify({ visitors: safeVisitors, views: safeViews }));
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (cachedStats) {
       renderStats(cachedStats.visitors, cachedStats.views);
     }
 
-    async function fetchCountOnce(endpoint, key, timeoutMs = 4500) {
+    const mode = isLocal ? 'get' : (alreadyVisited ? 'view' : 'hit');
+    const sep = apiUrl.includes('?') ? '&' : '?';
+
+    async function requestCounter(timeoutMs = 8000) {
       const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
       const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
       try {
-        const res = await fetch(
-          `${base}/${endpoint}/${encodeURIComponent(ns)}/${encodeURIComponent(key)}`,
-          { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined }
-        );
-        if (!res.ok) return { status: res.status, value: null };
+        const res = await fetch(`${apiUrl}${sep}mode=${mode}&_t=${Date.now()}`, {
+          method: 'GET',
+          signal: ctrl ? ctrl.signal : undefined,
+        });
+        if (!res.ok) return null;
         const data = await res.json().catch(() => null);
-        return {
-          status: res.status,
-          value: data && typeof data.value === 'number' ? data.value : null,
-        };
+        if (!data || !data.ok || typeof data.visitors !== 'number' || typeof data.views !== 'number') {
+          return null;
+        }
+        return data;
       } catch (_) {
-        return { status: 0, value: null };
+        return null;
       } finally {
         if (timer) clearTimeout(timer);
       }
     }
 
-    async function fetchCount(endpoint, key) {
-      const first = await fetchCountOnce(endpoint, key);
-      if (first.value !== null || first.status === 404) return first;
-      await new Promise((r) => setTimeout(r, 700));
-      return fetchCountOnce(endpoint, key);
-    }
-
     try {
-      const viewsPromise = isLocal
-        ? fetchCount('get', 'views')
-        : fetchCount('hit', 'views');
-
-      let visitorsPromise;
-      if (isLocal || alreadyVisited) {
-        visitorsPromise = fetchCount('get', 'visitors').then((res) => {
-          if (res.value !== null) return res;
-          // 僅在 404（尚未初始化）時才補打 /hit，避免 500 或逾時誤重複計人
-          if (!isLocal && res.status === 404) return fetchCount('hit', 'visitors');
-          return res;
-        });
-      } else {
-        visitorsPromise = fetchCount('hit', 'visitors').then((res) => {
-          if (res.value !== null) {
-            try { window.localStorage.setItem(visitorKey, '1'); } catch (_) {}
-          }
-          return res;
-        });
+      let data = await requestCounter();
+      if (!data) {
+        await new Promise((r) => setTimeout(r, 800));
+        data = await requestCounter();
       }
+      if (!data) return;
 
-      const [viewsRes, visitorsRes] = await Promise.all([viewsPromise, visitorsPromise]);
-      const finalViews = viewsRes.value !== null ? viewsRes.value : (cachedStats ? cachedStats.views : null);
-      const finalVisitors = visitorsRes.value !== null ? visitorsRes.value : (cachedStats ? cachedStats.visitors : null);
-      if (finalViews === null && finalVisitors === null) return;
-
-      renderStats(finalVisitors ?? finalViews ?? 0, finalViews ?? finalVisitors ?? 0);
+      if (mode === 'hit') {
+        try { window.localStorage.setItem(visitorKey, '1'); } catch (_) { }
+      }
+      renderStats(data.visitors, data.views);
     } catch (err) {
       console.warn('載入瀏覽計數器失敗:', err);
     }
