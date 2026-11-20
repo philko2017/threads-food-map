@@ -191,6 +191,25 @@
   }
 
   // 工具函式
+  function initAnalytics() {
+    const gaId = String(cfg.GA_MEASUREMENT_ID || '').trim();
+    if (!/^G-[A-Z0-9]{4,20}$/i.test(gaId)) return;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function gtag() { window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', gaId, { anonymize_ip: true });
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`;
+    document.head.appendChild(script);
+  }
+
+  function trackEvent(eventName, params = {}) {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', eventName, params);
+    }
+  }
+
   function escHtml(str) {
     return String(str || '')
       .replace(/&/g, '&amp;')
@@ -594,7 +613,7 @@
       <div class="drawer-actions">
         <button class="action-btn primary ${threadsUrl ? '' : 'disabled'}" id="btn-visit-threads" type="button" ${threadsUrl ? '' : 'disabled'}>去 Threads</button>
         <button class="action-btn ${igUrl ? '' : 'disabled'}" id="btn-visit-ig" type="button" ${igUrl ? '' : 'disabled'}>去 IG</button>
-        <a class="action-btn ${navUrl ? '' : 'disabled'}" href="${navUrl || '#'}" target="_blank" rel="noopener noreferrer">導航</a>
+        <a class="action-btn ${navUrl ? '' : 'disabled'}" id="btn-visit-nav" href="${navUrl || '#'}" target="_blank" rel="noopener noreferrer">導航</a>
         <button class="action-btn" id="btn-drawer-share" type="button">分享店家</button>
       </div>
       <div class="drawer-report">
@@ -603,6 +622,13 @@
     `;
 
     drawer.classList.remove('hidden');
+
+    trackEvent('view_store', {
+      store_id: store['編號'],
+      store_name: store['店名'],
+      store_category: store['類別'],
+      store_city: store['縣市'],
+    });
 
     if (coords && state.map) {
       state.map.setView([coords.lat, coords.lng], coords.exact ? 15 : 12, { animate: true });
@@ -614,7 +640,22 @@
     if (igUrl) {
       document.getElementById('btn-visit-ig').addEventListener('click', () => visitStoreExternal(store, igUrl, 'ig'));
     }
-    document.getElementById('btn-drawer-share').addEventListener('click', () => openShareModal(store));
+    if (navUrl) {
+      document.getElementById('btn-visit-nav').addEventListener('click', () => {
+        trackEvent('click_nav', {
+          store_id: store['編號'],
+          store_name: store['店名'],
+          store_city: store['縣市'],
+        });
+      });
+    }
+    document.getElementById('btn-drawer-share').addEventListener('click', () => {
+      trackEvent('open_share', {
+        store_id: store['編號'],
+        store_name: store['店名'],
+      });
+      openShareModal(store);
+    });
     document.getElementById('btn-report-store').addEventListener('click', () => {
       const rawAdmin = String(cfg.ADMIN_THREADS_HANDLE || '').trim().replace(/^@+/, '');
       const adminHandle = isValidSocialHandle(rawAdmin) ? rawAdmin : 'its.all.good.73';
@@ -659,6 +700,12 @@
 
   async function visitStoreExternal(store, targetUrl, channel) {
     const storeId = store['編號'];
+    trackEvent('click_social', {
+      channel,
+      store_id: storeId,
+      store_name: store['店名'],
+      store_category: store['類別'],
+    });
     if (state.user.loggedIn && store['狀態'] === '已確認' && store['店家 LINE 帳號'] !== state.user.userId) {
       if (!state.user.visitedToday.includes(storeId) && state.user.visitedToday.length < 20) {
         state.user.visitedToday.push(storeId);
@@ -882,6 +929,12 @@
         };
         state.lastSubmittedStore = newStore;
         state.allStores.unshift(newStore);
+        trackEvent('submit_store_success', {
+          store_id: data.id || '',
+          store_name: newStore['店名'],
+          store_category: newStore['類別'],
+          store_city: newStore['縣市'],
+        });
         renderCategoryChips();
         applyFilters();
 
@@ -927,11 +980,13 @@
       document.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
       btn.classList.add('active');
       state.selectedCategory = btn.getAttribute('data-category');
+      trackEvent('filter_category', { category: state.selectedCategory });
       applyFilters();
     });
 
     document.getElementById('city-filter').addEventListener('change', (e) => {
       state.selectedCity = e.target.value;
+      trackEvent('filter_city', { city: state.selectedCity });
       applyFilters();
     });
 
@@ -976,12 +1031,14 @@
       link.download = `${safeName}-脆友美食地圖.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
+      trackEvent('share_store', { method: 'download_card', store_id: state.shareTargetStore['編號'], store_name: state.shareTargetStore['店名'] });
       showToast('已下載宣傳圖卡！');
     });
 
     document.getElementById('btn-copy-link').addEventListener('click', async () => {
       if (!state.shareTargetStore) return;
       const url = getStoreShareUrl(state.shareTargetStore['編號']);
+      trackEvent('share_store', { method: 'copy_link', store_id: state.shareTargetStore['編號'], store_name: state.shareTargetStore['店名'] });
       try {
         await navigator.clipboard.writeText(url);
         showToast('已複製店家專屬連結！');
@@ -1002,12 +1059,16 @@
 
     document.getElementById('btn-share-threads').addEventListener('click', () => {
       const text = document.getElementById('share-threads-text').value;
+      if (state.shareTargetStore) {
+        trackEvent('share_store', { method: 'threads', store_id: state.shareTargetStore['編號'], store_name: state.shareTargetStore['店名'] });
+      }
       openExternalUrl(`https://www.threads.net/intent/post?text=${encodeURIComponent(text)}`);
     });
 
     document.getElementById('btn-share-line').addEventListener('click', async () => {
       if (!state.shareTargetStore) return;
       const store = state.shareTargetStore;
+      trackEvent('share_store', { method: 'line', store_id: store['編號'], store_name: store['店名'] });
       const shareUrl = getStoreShareUrl(store['編號']);
       const text = `${store['店名']}（${store['縣市']}${store['區']}｜${store['類別']}）\n${store['一句話介紹'] || ''}\n👉 ${shareUrl}`.trim();
 
@@ -1038,6 +1099,7 @@
     });
 
     document.getElementById('btn-locate').addEventListener('click', () => {
+      trackEvent('locate_nearby');
       if (!navigator.geolocation) {
         return showToast('此瀏覽器不支援定位功能');
       }
@@ -1127,6 +1189,7 @@
   }
 
   function init() {
+    initAnalytics();
     document.getElementById('rules-inline-body').innerHTML = PUBLIC_RULES_HTML;
     document.getElementById('rules-modal-body').innerHTML = PUBLIC_RULES_HTML;
     populateCitySelects();

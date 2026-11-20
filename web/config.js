@@ -18,4 +18,7 @@ window.FOOD_MAP_CONFIG = {
 
   // 管理者 Threads 帳號（供「回報資訊有誤」私訊或聯絡用）
   ADMIN_THREADS_HANDLE: 'its.all.good.73',
+
+  // Google Analytics 4 評估 ID（例如：G-XXXXXXXXXX；留空或維持 __GA_MEASUREMENT_ID__ 時不啟用）
+  GA_MEASUREMENT_ID: 'G-BP3VMHFL8C',
 };
