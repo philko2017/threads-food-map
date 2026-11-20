@@ -210,11 +210,40 @@
     }
   }
 
+  function renderLaunchDateBanner() {
+    const todayEl = document.getElementById('stat-today');
+    const dayEl = document.getElementById('stat-launch-day');
+    if (!todayEl || !dayEl) return;
+
+    const launchStr = String(cfg.LAUNCH_DATE || '2026-11-18').trim();
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(launchStr);
+    const launchUtc = match
+      ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+      : Date.UTC(2026, 10, 18);
+
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+    const y = Number(parts.find((p) => p.type === 'year').value);
+    const m = Number(parts.find((p) => p.type === 'month').value);
+    const d = Number(parts.find((p) => p.type === 'day').value);
+
+    const pad = (n) => String(n).padStart(2, '0');
+    todayEl.textContent = `${y}/${pad(m)}/${pad(d)}`;
+
+    const todayUtc = Date.UTC(y, m - 1, d);
+    const dayNum = Math.max(1, Math.floor((todayUtc - launchUtc) / 86400000) + 1);
+    dayEl.textContent = dayNum.toLocaleString('zh-TW');
+  }
+
   async function initVisitCounter() {
     const ns = String(cfg.COUNTER_NAMESPACE || '').trim();
     if (!ns || !/^[a-zA-Z0-9._-]{3,64}$/.test(ns)) return;
 
-    const bar = document.getElementById('visit-stats-bar');
+    const bar = document.getElementById('visit-stats-counts');
     const visitorsEl = document.getElementById('stat-visitors');
     const viewsEl = document.getElementById('stat-views');
     if (!bar || !visitorsEl || !viewsEl) return;
@@ -1296,6 +1325,7 @@
 
   function init() {
     initAnalytics();
+    renderLaunchDateBanner();
     initVisitCounter();
     document.getElementById('rules-inline-body').innerHTML = PUBLIC_RULES_HTML;
     document.getElementById('rules-modal-body').innerHTML = PUBLIC_RULES_HTML;

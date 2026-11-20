@@ -24,4 +24,7 @@ window.FOOD_MAP_CONFIG = {
 
   // 頁面頂部即時訪客／瀏覽計數器命名空間（使用免費 Abacus API；留空則不顯示）
   COUNTER_NAMESPACE: 'philko2017-threads-food-map',
+
+  // 網站上線起算日（計算「上線第 N 天」，2026-11-18 為第 1 天）
+  LAUNCH_DATE: '2026-11-18',
 };

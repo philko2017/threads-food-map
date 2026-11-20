@@ -35,20 +35,11 @@
     integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
     integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="anonymous" />
-  <link rel="stylesheet" href="./styles.css?v=20261120-4" />
+  <link rel="stylesheet" href="./styles.css?v=20261120-5" />
 </head>
 
 <body>
   <div id="app" class="app-shell">
-    <!-- 最上方正中央：訪客數與瀏覽次數統計條 -->
-    <div id="visit-stats-bar" class="visit-stats-bar hidden" aria-live="polite">
-      <span class="visit-stats-pill">
-        👀 已有 <strong id="stat-visitors" class="visit-stats-num">-</strong> 人看過
-        <span class="visit-stats-sep" aria-hidden="true">·</span>
-        已有 <strong id="stat-views" class="visit-stats-num">-</strong> 次看過
-      </span>
-    </div>
-
     <!-- 頂部列 -->
     <header class="top-bar">
       <div class="brand">
@@ -69,6 +60,21 @@
           <p id="store-count-label" class="brand-sub">載入中...</p>
         </div>
       </div>
+
+      <!-- 頂部正中央：本日日期、上線天數與訪客／瀏覽統計 -->
+      <div id="top-center-stats" class="top-center-stats" aria-live="polite">
+        <div class="stats-date-line">
+          📅 <span id="stat-today">-</span>
+          <span class="visit-stats-sep" aria-hidden="true">·</span>
+          上線第 <strong id="stat-launch-day" class="visit-stats-num">-</strong> 天
+        </div>
+        <div id="visit-stats-counts" class="stats-count-line hidden">
+          👀 已有 <strong id="stat-visitors" class="visit-stats-num">-</strong> 人看過
+          <span class="visit-stats-sep" aria-hidden="true">·</span>
+          已有 <strong id="stat-views" class="visit-stats-num">-</strong> 次看過
+        </div>
+      </div>
+
       <div class="top-actions">
         <button id="btn-rules-top" class="btn-ghost" type="button">收錄規則</button>
         <button id="btn-copyright-top" class="btn-ghost" type="button">版權宣告</button>
@@ -363,8 +369,8 @@
     crossorigin="anonymous"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" crossorigin="anonymous" defer></script>
   <script src="./seed_stores.js?v=20261120-1"></script>
-  <script src="./config.js?v=20261120-3"></script>
-  <script src="./app.js?v=20261120-8"></script>
+  <script src="./config.js?v=20261120-4"></script>
+  <script src="./app.js?v=20261120-9"></script>
 </body>
 
 </html>
