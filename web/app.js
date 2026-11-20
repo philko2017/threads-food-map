@@ -221,21 +221,66 @@
 
     const host = window.location.hostname || '';
     const isLocal = !host || host === 'localhost' || host === '127.0.0.1';
-    const base = `https://abacus.jasoncameron.dev`;
+    const base = 'https://abacus.jasoncameron.dev';
     const visitorKey = 'tfm_visitor_counted_v1';
+    const cacheKey = 'tfm_visit_stats_cache_v1';
 
     let alreadyVisited = false;
+    let cachedStats = null;
     try {
       alreadyVisited = window.localStorage.getItem(visitorKey) === '1';
+      const rawCache = window.localStorage.getItem(cacheKey);
+      if (rawCache) {
+        const parsed = JSON.parse(rawCache);
+        if (parsed && typeof parsed.views === 'number' && typeof parsed.visitors === 'number') {
+          cachedStats = parsed;
+        }
+      }
     } catch (_) {
       alreadyVisited = false;
     }
 
+    function renderStats(visitors, views) {
+      const safeViews = Math.max(views, visitors);
+      const safeVisitors = Math.min(visitors, safeViews);
+      visitorsEl.textContent = safeVisitors.toLocaleString('zh-TW');
+      viewsEl.textContent = safeViews.toLocaleString('zh-TW');
+      bar.classList.remove('hidden');
+      try {
+        window.localStorage.setItem(cacheKey, JSON.stringify({ visitors: safeVisitors, views: safeViews }));
+      } catch (_) {}
+    }
+
+    if (cachedStats) {
+      renderStats(cachedStats.visitors, cachedStats.views);
+    }
+
+    async function fetchCountOnce(endpoint, key, timeoutMs = 4500) {
+      const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+      try {
+        const res = await fetch(
+          `${base}/${endpoint}/${encodeURIComponent(ns)}/${encodeURIComponent(key)}`,
+          { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined }
+        );
+        if (!res.ok) return { status: res.status, value: null };
+        const data = await res.json().catch(() => null);
+        return {
+          status: res.status,
+          value: data && typeof data.value === 'number' ? data.value : null,
+        };
+      } catch (_) {
+        return { status: 0, value: null };
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    }
+
     async function fetchCount(endpoint, key) {
-      const res = await fetch(`${base}/${endpoint}/${encodeURIComponent(ns)}/${encodeURIComponent(key)}`, { cache: 'no-store' });
-      if (!res.ok) return null;
-      const data = await res.json().catch(() => null);
-      return data && typeof data.value === 'number' ? data.value : null;
+      const first = await fetchCountOnce(endpoint, key);
+      if (first.value !== null || first.status === 404) return first;
+      await new Promise((r) => setTimeout(r, 700));
+      return fetchCountOnce(endpoint, key);
     }
 
     try {
@@ -245,27 +290,27 @@
 
       let visitorsPromise;
       if (isLocal || alreadyVisited) {
-        visitorsPromise = fetchCount('get', 'visitors').then((val) => {
-          if (val !== null) return val;
-          return isLocal ? 0 : fetchCount('hit', 'visitors');
+        visitorsPromise = fetchCount('get', 'visitors').then((res) => {
+          if (res.value !== null) return res;
+          // 僅在 404（尚未初始化）時才補打 /hit，避免 500 或逾時誤重複計人
+          if (!isLocal && res.status === 404) return fetchCount('hit', 'visitors');
+          return res;
         });
       } else {
-        visitorsPromise = fetchCount('hit', 'visitors').then((val) => {
-          if (val !== null) {
+        visitorsPromise = fetchCount('hit', 'visitors').then((res) => {
+          if (res.value !== null) {
             try { window.localStorage.setItem(visitorKey, '1'); } catch (_) {}
           }
-          return val;
+          return res;
         });
       }
 
-      const [viewsVal, visitorsVal] = await Promise.all([viewsPromise, visitorsPromise]);
-      if (viewsVal === null && visitorsVal === null) return;
+      const [viewsRes, visitorsRes] = await Promise.all([viewsPromise, visitorsPromise]);
+      const finalViews = viewsRes.value !== null ? viewsRes.value : (cachedStats ? cachedStats.views : null);
+      const finalVisitors = visitorsRes.value !== null ? visitorsRes.value : (cachedStats ? cachedStats.visitors : null);
+      if (finalViews === null && finalVisitors === null) return;
 
-      const safeViews = Math.max(viewsVal ?? 0, visitorsVal ?? 0);
-      const safeVisitors = Math.min(visitorsVal ?? 0, safeViews);
-      visitorsEl.textContent = safeVisitors.toLocaleString('zh-TW');
-      viewsEl.textContent = safeViews.toLocaleString('zh-TW');
-      bar.classList.remove('hidden');
+      renderStats(finalVisitors ?? finalViews ?? 0, finalViews ?? finalVisitors ?? 0);
     } catch (err) {
       console.warn('載入瀏覽計數器失敗:', err);
     }
