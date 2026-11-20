@@ -183,19 +183,23 @@
           </div>
 
           <div class="form-group">
-            <label for="f-category">特色分類 <span class="req">*</span></label>
-            <input id="f-category" name="類別" type="text" maxlength="20" required list="category-suggestions"
-              placeholder="例如：臭豆腐、麵線、手沖咖啡" />
-            <datalist id="category-suggestions">
-              <option value="臭豆腐"></option>
-              <option value="麵線"></option>
-              <option value="咖啡"></option>
-              <option value="甜點"></option>
-              <option value="蔥油餅"></option>
-              <option value="早午餐"></option>
-              <option value="飲料"></option>
-              <option value="火鍋"></option>
-            </datalist>
+            <label for="f-category-custom">特色分類（可複選）<span class="req">*</span></label>
+            <div id="f-category-chips" class="form-tag-chips" role="group" aria-label="選擇特色分類">
+              <button class="form-tag-chip" type="button" data-tag="臭豆腐">臭豆腐</button>
+              <button class="form-tag-chip" type="button" data-tag="麵線">麵線</button>
+              <button class="form-tag-chip" type="button" data-tag="鹹酥雞">鹹酥雞</button>
+              <button class="form-tag-chip" type="button" data-tag="蔥抓餅">蔥抓餅</button>
+              <button class="form-tag-chip" type="button" data-tag="古早味點心">古早味點心</button>
+              <button class="form-tag-chip" type="button" data-tag="異國美食">異國美食</button>
+              <button class="form-tag-chip" type="button" data-tag="50年以上老店">50年以上老店</button>
+              <button class="form-tag-chip" type="button" data-tag="咖啡">咖啡</button>
+              <button class="form-tag-chip" type="button" data-tag="早午餐">早午餐</button>
+              <button class="form-tag-chip" type="button" data-tag="火鍋">火鍋</button>
+              <button class="form-tag-chip" type="button" data-tag="伴手禮">伴手禮</button>
+            </div>
+            <input id="f-category-custom" type="text" maxlength="40"
+              placeholder="其他自訂標籤（可用逗號分隔，例如：蔥油餅, 甜點）" />
+            <input id="f-category" name="類別" type="hidden" />
           </div>
 
           <div class="form-group">
@@ -370,7 +374,7 @@
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" crossorigin="anonymous" defer></script>
   <script src="./seed_stores.js?v=20261120-1"></script>
   <script src="./config.js?v=20261120-5"></script>
-  <script src="./app.js?v=20261120-11"></script>
+  <script src="./app.js?v=20261121-1"></script>
 </body>
 
 </html>

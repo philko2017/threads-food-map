@@ -5,34 +5,81 @@
   const VISIBLE_STATUSES = new Set(['確認中', '已確認', '待修改']);
   const GENERIC_CATEGORIES = new Set(['小吃', '餐廳', '甜點', '伴手禮', '酒吧居酒屋', '']);
 
-  function normalizeCategory(store) {
+  function normalizeSingleTag(tag) {
+    const t = String(tag || '').trim();
+    if (!t) return '';
+    if (t === '麵線' || t === '素麵線' || t === '麵線糊' || t.includes('麵線')) return '麵線';
+    if (t === '古早味美食') return '古早味點心';
+    if (t === '港式創意私房料理') return '異國美食';
+    return t;
+  }
+
+  function parseStoreTags(store) {
     const raw = String(store['類別'] || '').trim();
-    if (raw === '麵線' || raw === '素麵線' || raw === '麵線糊' || raw.includes('麵線')) {
-      return '麵線';
-    }
-    if (!GENERIC_CATEGORIES.has(raw)) {
-      return raw;
-    }
+    const parts = raw.split(/[,、，/]+/).map((p) => p.trim()).filter(Boolean);
+    const tags = [];
+    const addTag = (t) => {
+      const norm = normalizeSingleTag(t);
+      if (norm && !tags.includes(norm)) tags.push(norm);
+    };
+
     const text = `${store['店名'] || ''} ${store['一句話介紹'] || ''}`;
-    const rules = [
+    const specialtyRules = [
       [/臭豆腐/, '臭豆腐'],
       [/麵線/, '麵線'],
+      [/鹹酥雞|鹽酥雞/, '鹹酥雞'],
+      [/蔥抓餅|蔥油抓餅/, '蔥抓餅'],
       [/蔥油餅/, '蔥油餅'],
-      [/白糖粿/, '白糖粿'],
+      [/白糖粿|狀元糕|紅豆餅|車輪餅|地瓜球|粉粿|雞蛋糕|麻糬|豆花|蘿蔔糕|糯米炸|古早味點心/, '古早味點心'],
       [/早午餐/, '早午餐'],
-      [/河粉|越式/, '越式料理'],
+      [/臭臭鍋|鴨血煲|火鍋/, '火鍋'],
+      [/河粉|越式|墨西哥|捲餅|塔可|港式|韓式|印度|泰式|拿坡里|希臘|和食|日本神戶/, '異國美食'],
       [/串炸|串揚/, '串炸居酒屋'],
-      [/墨西哥|捲餅|塔可/, '墨西哥料理'],
       [/創意料理/, '創意料理'],
-      [/芒果乾|梅肉/, '果乾零嘴'],
+      [/芒果乾|梅肉|伴手禮|肉脯|肉鬆|囍餅|喜餅|餅行|餅店/, '伴手禮'],
       [/手路菜|辦桌/, '手路菜'],
-      [/茶葉|製茶/, '茶葉'],
+      [/茶葉|製茶|茶行/, '茶葉'],
       [/咖啡|珈琲/, '咖啡'],
     ];
-    for (const [re, tag] of rules) {
-      if (re.test(text)) return tag;
+
+    parts.forEach((p) => {
+      if (!GENERIC_CATEGORIES.has(p)) {
+        addTag(p);
+      } else {
+        let matched = false;
+        specialtyRules.forEach(([re, tag]) => {
+          if (re.test(text)) {
+            addTag(tag);
+            matched = true;
+          }
+        });
+        if (!matched) addTag(p);
+      }
+    });
+
+    // 跨品項／老店複選補充（即使原本已有主分類，仍補齊兼具的特色標籤）
+    if (/臭豆腐/.test(text)) addTag('臭豆腐');
+    if (/麵線/.test(text)) addTag('麵線');
+    if (/臭臭鍋|鴨血煲|火鍋/.test(text)) addTag('火鍋');
+    if (/早午餐/.test(text)) addTag('早午餐');
+    if (/咖啡|珈琲/.test(text)) addTag('咖啡');
+    if (/越式|墨西哥|港式|韓式|印度|泰式|拿坡里|希臘|日本神戶/.test(text)) addTag('異國美食');
+    if (/(1895|1916|1921|1923|1957|1976|50年|60年|62年|66年|百年)/.test(text)) addTag('50年以上老店');
+    if (/餅店|餅行|囍餅|喜餅|白糖粿|麻糬|豆花|粉粿|紅豆餅|車輪餅|地瓜球|雞蛋糕|狀元糕|蘿蔔糕|糯米炸/.test(text) && !tags.includes('古早味點心')) {
+      addTag('古早味點心');
     }
-    return raw || '小吃';
+
+    if (tags.length === 0) addTag('小吃');
+    return tags;
+  }
+
+  function enrichStore(store) {
+    const _tags = parseStoreTags(store);
+    return {
+      ...store,
+      _tags,
+      '類別': _tags.join(', '),
+    };
   }
 
   // 台灣各縣市代表座標（供純宅配或尚無經緯度的店家在地圖上顯示大概位置）
@@ -506,7 +553,7 @@
       banner.innerHTML = `目前顯示首批 ${seedList.length} 家脆友種子店家（設定 <code>config.js</code> 後將改讀即時試算表）。`;
       state.allStores = seedList
         .filter((s) => VISIBLE_STATUSES.has(s['狀態']))
-        .map((s) => ({ ...s, '類別': normalizeCategory(s) }));
+        .map(enrichStore);
       renderCategoryChips();
       applyFilters();
       checkDeepLink();
@@ -516,7 +563,7 @@
     if (!isAllowedEndpointUrl(csvUrl, { allowRelative: true })) {
       console.warn('SHEET_CSV_URL 格式不安全，已改用種子店家資料');
       banner.classList.remove('hidden');
-      state.allStores = seedList.map((s) => ({ ...s, '類別': normalizeCategory(s) }));
+      state.allStores = seedList.map(enrichStore);
       renderCategoryChips();
       applyFilters();
       checkDeepLink();
@@ -530,12 +577,12 @@
       const parsed = parseCSV(text);
       state.allStores = parsed
         .filter((s) => s['店名'] && VISIBLE_STATUSES.has(s['狀態']))
-        .map((s) => ({ ...s, '類別': normalizeCategory(s) }));
+        .map(enrichStore);
     } catch (err) {
       console.error('載入試算表失敗:', err);
       showToast('無法讀取試算表資料，暫時顯示種子店家資料');
       banner.classList.remove('hidden');
-      state.allStores = seedList.map((s) => ({ ...s, '類別': normalizeCategory(s) }));
+      state.allStores = seedList.map(enrichStore);
     }
     renderCategoryChips();
     applyFilters();
@@ -547,8 +594,10 @@
     if (!container) return;
     const counts = new Map();
     state.allStores.forEach((s) => {
-      const cat = String(s['類別'] || '').trim();
-      if (cat) counts.set(cat, (counts.get(cat) || 0) + 1);
+      const tags = Array.isArray(s._tags) ? s._tags : parseStoreTags(s);
+      tags.forEach((cat) => {
+        if (cat) counts.set(cat, (counts.get(cat) || 0) + 1);
+      });
     });
     const categories = [...counts.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hant'))
@@ -570,10 +619,11 @@
   function applyFilters() {
     const q = state.searchQuery.trim().toLowerCase();
     const filtered = state.allStores.filter((s) => {
-      if (state.selectedCategory !== '全部' && s['類別'] !== state.selectedCategory) return false;
+      const tags = Array.isArray(s._tags) ? s._tags : [];
+      if (state.selectedCategory !== '全部' && !tags.includes(state.selectedCategory)) return false;
       if (state.selectedCity !== '全部' && s['縣市'] !== state.selectedCity) return false;
       if (q) {
-        const hay = `${s['店名']} ${s['一句話介紹']} ${s['縣市']} ${s['區']} ${s['類別']}`.toLowerCase();
+        const hay = `${s['店名']} ${s['一句話介紹']} ${s['縣市']} ${s['區']} ${tags.join(' ')}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -586,7 +636,7 @@
     } else if (state.sortBy === 'city') {
       filtered.sort((a, b) => `${a['縣市']}${a['區']}`.localeCompare(`${b['縣市']}${b['區']}`, 'zh-Hant'));
     } else if (state.sortBy === 'category') {
-      filtered.sort((a, b) => String(a['類別'] || '').localeCompare(String(b['類別'] || ''), 'zh-Hant'));
+      filtered.sort((a, b) => String((a._tags && a._tags[0]) || a['類別'] || '').localeCompare(String((b._tags && b._tags[0]) || b['類別'] || ''), 'zh-Hant'));
     }
 
     state.filteredStores = filtered;
@@ -656,7 +706,7 @@
               ${statusBadgeHtml(s['狀態'])}
             </div>
             <div class="badges">
-              <span class="badge badge-cat">${escHtml(s['類別'])}</span>
+              ${(s._tags || [s['類別']]).map((t) => `<span class="badge badge-cat">${escHtml(t)}</span>`).join('')}
               <span class="badge">${escHtml(s['縣市'])}${escHtml(s['區'])}</span>
               ${deliveryTag}
             </div>
@@ -716,7 +766,7 @@
         ${statusBadgeHtml(store['狀態'])}
       </div>
       <div class="badges">
-        <span class="badge badge-cat">${escHtml(store['類別'])}</span>
+        ${(store._tags || [store['類別']]).map((t) => `<span class="badge badge-cat">${escHtml(t)}</span>`).join('')}
         <span class="badge">${escHtml(store['縣市'])}${escHtml(store['區'])}</span>
         ${store['等級徽章'] ? `<span class="badge badge-level">${escHtml(store['等級徽章'])}</span>` : ''}
       </div>
@@ -955,6 +1005,34 @@
     const addressReq = document.getElementById('address-req');
     const introInput = document.getElementById('f-intro');
     const introCount = document.getElementById('intro-count');
+    const tagChipsBox = document.getElementById('f-category-chips');
+    const customTagInput = document.getElementById('f-category-custom');
+    const hiddenCategoryInput = document.getElementById('f-category');
+
+    if (tagChipsBox) {
+      tagChipsBox.addEventListener('click', (e) => {
+        const chip = e.target.closest('.form-tag-chip');
+        if (!chip) return;
+        chip.classList.toggle('active');
+      });
+    }
+
+    function collectFormCategory() {
+      const selected = tagChipsBox
+        ? [...tagChipsBox.querySelectorAll('.form-tag-chip.active')].map((el) => el.getAttribute('data-tag'))
+        : [];
+      const custom = customTagInput
+        ? String(customTagInput.value || '').split(/[,、，/]+/).map((s) => s.trim()).filter(Boolean)
+        : [];
+      const merged = [];
+      [...selected, ...custom].forEach((t) => {
+        const norm = normalizeSingleTag(t);
+        if (norm && !merged.includes(norm)) merged.push(norm);
+      });
+      const joined = merged.join(', ');
+      if (hiddenCategoryInput) hiddenCategoryInput.value = joined;
+      return joined;
+    }
 
     document.querySelectorAll('input[name="有沒有實體店面"]').forEach((radio) => {
       radio.addEventListener('change', (e) => {
@@ -973,11 +1051,12 @@
       e.preventDefault();
       errorBox.classList.add('hidden');
 
+      const categoryStr = collectFormCategory();
       const fd = new FormData(form);
       const hasStore = fd.get('有沒有實體店面') === 'true';
       const payload = {
         '店名': String(fd.get('店名') || '').trim(),
-        '類別': String(fd.get('類別') || '').trim(),
+        '類別': categoryStr,
         '有沒有實體店面': hasStore,
         '縣市': String(fd.get('縣市') || '').trim(),
         '區': String(fd.get('區') || '').trim(),
@@ -992,7 +1071,8 @@
       };
 
       if (!payload['店名']) return showFormError('請填寫店名');
-      if (!payload['類別']) return showFormError('請選擇類別');
+      if (!payload['類別']) return showFormError('請至少選擇或輸入一個特色分類');
+      if (payload['類別'].length > 60) return showFormError('特色分類合計最多 60 字');
       if (!payload['縣市'] || !payload['區']) return showFormError('請填寫縣市與區');
       if (hasStore && !payload['地址']) return showFormError('有實體店面時請填寫地址');
       if (!payload['Threads 帳號'] && !payload['IG 帳號']) {
@@ -1034,16 +1114,15 @@
           throw new Error(data.message || '送出失敗，請稍後再試');
         }
 
-        const newStore = {
+        const newStore = enrichStore({
           ...payload,
-          '類別': normalizeCategory(payload),
           '有沒有實體店面': hasStore ? '是' : '否',
           '編號': data.id,
           '送出時間': new Date().toISOString(),
           '狀態': '確認中',
           '緯度': '',
           '經度': '',
-        };
+        });
         state.lastSubmittedStore = newStore;
         state.allStores.unshift(newStore);
         trackEvent('submit_store_success', {
@@ -1059,6 +1138,9 @@
         form.classList.add('hidden');
         successBox.classList.remove('hidden');
         form.reset();
+        if (tagChipsBox) {
+          tagChipsBox.querySelectorAll('.form-tag-chip.active').forEach((c) => c.classList.remove('active'));
+        }
         introCount.textContent = '0 / 30';
       } catch (err) {
         showFormError(err.message || '網路異常，請稍後再試');

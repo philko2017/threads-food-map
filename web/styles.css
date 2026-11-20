@@ -17,7 +17,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -455,9 +456,12 @@ html, body {
 
 /* 底部雙主按鈕列：附近的店 ＋ 免費登錄我的店（同級、一樣大、一樣顯眼） */
 @keyframes fabPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 8px 22px rgba(28, 25, 23, 0.28), 0 0 0 0 rgba(234, 88, 12, 0.35);
   }
+
   50% {
     box-shadow: 0 10px 26px rgba(28, 25, 23, 0.36), 0 0 0 8px rgba(234, 88, 12, 0);
   }
@@ -579,6 +583,7 @@ html, body {
     align-items: center;
     padding: 20px;
   }
+
   .modal-sheet {
     border-radius: 18px;
     max-height: 88dvh;
@@ -1124,4 +1129,30 @@ html, body {
   background-color: #c2410c;
   color: #ffffff;
   font-weight: 700;
+}
+
+/* 表單複選特色標籤 */
+.form-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.form-tag-chip {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.form-tag-chip.active {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  font-weight: 600;
 }
