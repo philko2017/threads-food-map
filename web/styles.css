@@ -180,11 +180,39 @@ body {
   z-index: 19;
 }
 
+.category-chips-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
 .category-chips {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding-bottom: 8px;
+  max-height: 32px;
+  overflow: hidden;
+}
+
+.category-chips.expanded {
+  max-height: none;
+  overflow: visible;
+}
+
+.chip-toggle-btn {
+  flex: 0 0 auto;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: #9a3412;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .chip {
@@ -193,8 +221,8 @@ body {
   background: var(--bg);
   color: var(--text);
   border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 13px;
+  padding: 5px 10px;
+  font-size: 12.5px;
   cursor: pointer;
   white-space: nowrap;
 }

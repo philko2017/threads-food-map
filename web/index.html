@@ -35,7 +35,7 @@
     integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
     integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="anonymous" />
-  <link rel="stylesheet" href="./styles.css?v=20261120-5" />
+  <link rel="stylesheet" href="./styles.css?v=20261121-1" />
 </head>
 
 <body>
@@ -83,8 +83,11 @@
 
     <!-- 篩選列（地圖與清單共用） -->
     <section class="filter-bar" aria-label="篩選店家">
-      <div class="category-chips" id="category-chips">
-        <button class="chip active" data-category="全部" type="button">全部</button>
+      <div class="category-chips-wrap">
+        <div class="category-chips" id="category-chips">
+          <button class="chip active" data-category="全部" type="button">全部</button>
+        </div>
+        <button id="btn-toggle-chips" class="chip-toggle-btn" type="button" aria-expanded="false">更多分類 ▾</button>
       </div>
       <div class="filter-row-2">
         <select id="city-filter" aria-label="篩選縣市">
@@ -374,7 +377,7 @@
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" crossorigin="anonymous" defer></script>
   <script src="./seed_stores.js?v=20261120-1"></script>
   <script src="./config.js?v=20261120-5"></script>
-  <script src="./app.js?v=20261121-1"></script>
+  <script src="./app.js?v=20261121-2"></script>
 </body>
 
 </html>

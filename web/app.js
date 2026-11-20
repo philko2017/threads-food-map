@@ -1173,6 +1173,17 @@
   }
 
   function bindEvents() {
+    const toggleChipsBtn = document.getElementById('btn-toggle-chips');
+    const chipsContainer = document.getElementById('category-chips');
+    if (toggleChipsBtn && chipsContainer) {
+      toggleChipsBtn.addEventListener('click', () => {
+        const expanded = chipsContainer.classList.toggle('expanded');
+        toggleChipsBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        toggleChipsBtn.textContent = expanded ? '收合 ▴' : '更多分類 ▾';
+        if (state.map) setTimeout(() => state.map.invalidateSize(), 60);
+      });
+    }
+
     document.getElementById('category-chips').addEventListener('click', (e) => {
       const btn = e.target.closest('.chip');
       if (!btn) return;
