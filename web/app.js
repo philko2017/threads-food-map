@@ -210,6 +210,67 @@
     }
   }
 
+  async function initVisitCounter() {
+    const ns = String(cfg.COUNTER_NAMESPACE || '').trim();
+    if (!ns || !/^[a-zA-Z0-9._-]{3,64}$/.test(ns)) return;
+
+    const bar = document.getElementById('visit-stats-bar');
+    const visitorsEl = document.getElementById('stat-visitors');
+    const viewsEl = document.getElementById('stat-views');
+    if (!bar || !visitorsEl || !viewsEl) return;
+
+    const host = window.location.hostname || '';
+    const isLocal = !host || host === 'localhost' || host === '127.0.0.1';
+    const base = `https://abacus.jasoncameron.dev`;
+    const visitorKey = 'tfm_visitor_counted_v1';
+
+    let alreadyVisited = false;
+    try {
+      alreadyVisited = window.localStorage.getItem(visitorKey) === '1';
+    } catch (_) {
+      alreadyVisited = false;
+    }
+
+    async function fetchCount(endpoint, key) {
+      const res = await fetch(`${base}/${endpoint}/${encodeURIComponent(ns)}/${encodeURIComponent(key)}`, { cache: 'no-store' });
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => null);
+      return data && typeof data.value === 'number' ? data.value : null;
+    }
+
+    try {
+      const viewsPromise = isLocal
+        ? fetchCount('get', 'views')
+        : fetchCount('hit', 'views');
+
+      let visitorsPromise;
+      if (isLocal || alreadyVisited) {
+        visitorsPromise = fetchCount('get', 'visitors').then((val) => {
+          if (val !== null) return val;
+          return isLocal ? 0 : fetchCount('hit', 'visitors');
+        });
+      } else {
+        visitorsPromise = fetchCount('hit', 'visitors').then((val) => {
+          if (val !== null) {
+            try { window.localStorage.setItem(visitorKey, '1'); } catch (_) {}
+          }
+          return val;
+        });
+      }
+
+      const [viewsVal, visitorsVal] = await Promise.all([viewsPromise, visitorsPromise]);
+      if (viewsVal === null && visitorsVal === null) return;
+
+      const safeViews = Math.max(viewsVal ?? 0, visitorsVal ?? 0);
+      const safeVisitors = Math.min(visitorsVal ?? 0, safeViews);
+      visitorsEl.textContent = safeVisitors.toLocaleString('zh-TW');
+      viewsEl.textContent = safeViews.toLocaleString('zh-TW');
+      bar.classList.remove('hidden');
+    } catch (err) {
+      console.warn('載入瀏覽計數器失敗:', err);
+    }
+  }
+
   function escHtml(str) {
     return String(str || '')
       .replace(/&/g, '&amp;')
@@ -1190,6 +1251,7 @@
 
   function init() {
     initAnalytics();
+    initVisitCounter();
     document.getElementById('rules-inline-body').innerHTML = PUBLIC_RULES_HTML;
     document.getElementById('rules-modal-body').innerHTML = PUBLIC_RULES_HTML;
     populateCitySelects();

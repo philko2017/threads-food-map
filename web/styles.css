@@ -42,6 +42,39 @@ html, body {
   overflow: hidden;
 }
 
+.visit-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  background: linear-gradient(90deg, #fff7ed 0%, #ffedd5 50%, #fff7ed 100%);
+  border-bottom: 1px solid #fed7aa;
+  z-index: 21;
+}
+
+.visit-stats-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9a3412;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.visit-stats-num {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.visit-stats-sep {
+  color: #fb923c;
+  margin: 0 4px;
+}
+
 .top-bar {
   display: flex;
   align-items: center;

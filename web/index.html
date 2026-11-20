@@ -15,7 +15,8 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://philko2017.github.io/threads-food-map/" />
   <meta property="og:image" content="https://philko2017.github.io/threads-food-map/og-image.jpg?v=20261120-1" />
-  <meta property="og:image:secure_url" content="https://philko2017.github.io/threads-food-map/og-image.jpg?v=20261120-1" />
+  <meta property="og:image:secure_url"
+    content="https://philko2017.github.io/threads-food-map/og-image.jpg?v=20261120-1" />
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -34,11 +35,20 @@
     integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
     integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="anonymous" />
-  <link rel="stylesheet" href="./styles.css?v=20261120-3" />
+  <link rel="stylesheet" href="./styles.css?v=20261120-4" />
 </head>
 
 <body>
   <div id="app" class="app-shell">
+    <!-- 最上方正中央：訪客數與瀏覽次數統計條 -->
+    <div id="visit-stats-bar" class="visit-stats-bar hidden" aria-live="polite">
+      <span class="visit-stats-pill">
+        👀 已有 <strong id="stat-visitors" class="visit-stats-num">-</strong> 人看過
+        <span class="visit-stats-sep" aria-hidden="true">·</span>
+        已有 <strong id="stat-views" class="visit-stats-num">-</strong> 次看過
+      </span>
+    </div>
+
     <!-- 頂部列 -->
     <header class="top-bar">
       <div class="brand">
@@ -353,8 +363,8 @@
     crossorigin="anonymous"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" crossorigin="anonymous" defer></script>
   <script src="./seed_stores.js?v=20261120-1"></script>
-  <script src="./config.js?v=20261120-2"></script>
-  <script src="./app.js?v=20261120-6"></script>
+  <script src="./config.js?v=20261120-3"></script>
+  <script src="./app.js?v=20261120-7"></script>
 </body>
 
 </html>
