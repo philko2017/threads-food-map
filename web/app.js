@@ -448,7 +448,8 @@
       ? `${window.location.origin}${window.location.pathname}`
       : window.location.href.split('?')[0].split('#')[0];
     const url = new URL(base);
-    url.searchParams.set('store', storeId);
+    url.searchParams.set('v', '2');
+    url.hash = `store=${encodeURIComponent(storeId)}`;
     return url.toString();
   }
 
@@ -903,8 +904,10 @@
   }
 
   function checkDeepLink() {
-    const params = new URLSearchParams(window.location.search);
-    const targetId = params.get('store');
+    const hashRaw = String(window.location.hash || '').replace(/^#/, '');
+    const hashParams = new URLSearchParams(hashRaw);
+    const searchParams = new URLSearchParams(window.location.search);
+    const targetId = (hashParams.get('store') || searchParams.get('store') || '').trim();
     if (!targetId) return;
     const store = state.allStores.find((s) => s['編號'] === targetId);
     if (store) {
@@ -1226,6 +1229,8 @@
         () => showToast('無法取得定位，請確認瀏覽器權限')
       );
     });
+
+    window.addEventListener('hashchange', checkDeepLink);
   }
 
   function loginWithLiffOrDemo() {
