@@ -1068,6 +1068,7 @@
         '營業時間': String(fd.get('營業時間') || '').trim(),
         '同意聲明': document.getElementById('f-consent').checked,
         '店家 LINE 帳號': state.user.loggedIn ? state.user.userId : '',
+        website: String(fd.get('website') || '').trim(),
       };
 
       if (!payload['店名']) return showFormError('請填寫店名');

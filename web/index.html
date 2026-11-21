@@ -35,7 +35,7 @@
     integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
     integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="anonymous" />
-  <link rel="stylesheet" href="./styles.css?v=20261121-1" />
+  <link rel="stylesheet" href="./styles.css?v=20261121-2" />
 </head>
 
 <body>
@@ -180,6 +180,7 @@
       </div>
       <div class="modal-body">
         <form id="submit-form" novalidate>
+          <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off" class="hp-field" aria-hidden="true" />
           <div class="form-group">
             <label for="f-name">店名 <span class="req">*</span></label>
             <input id="f-name" name="店名" type="text" maxlength="60" required placeholder="例如：巷口那家咖啡" />
@@ -378,7 +379,7 @@
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" crossorigin="anonymous" defer></script>
   <script src="./seed_stores.js?v=20261120-1"></script>
   <script src="./config.js?v=20261120-5"></script>
-  <script src="./app.js?v=20261121-2"></script>
+  <script src="./app.js?v=20261121-3"></script>
 </body>
 
 </html>
